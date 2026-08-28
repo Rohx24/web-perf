@@ -42,8 +42,18 @@ Append to the URL:
 | `?auto=1` | Picks a tier from `hardwareConcurrency` / `deviceMemory` (conservative — errs toward `high`). |
 | `?dpr=1.5` | Override just the DPR cap (isolate one lever). |
 | `?transmission=0.5` | Override just the transmission-pass scale. |
+| `?log=1` | Real-time FPS graph **plus** per-frame CSV recording. A bottom bar shows `● REC N frames · <section>`; press **L** (or the button) to download the log, **R** to reset. |
 
-Flags combine, e.g. `?stats=1&tier=low`.
+Flags combine, e.g. `?stats=1&tier=low` or `?log=1&tier=low`.
+
+### Recording a scroll for analysis (`?log=1`)
+
+Open `/?log=1`, scroll slowly from the very top to the very bottom letting each
+project settle, then press **L** to download `perf-log-*.csv`. Each row is one
+frame: `time_ms, fps, frame_ms, scroll, section, drawcalls, triangles, dpr`. The
+`section` column names exactly where you are — including project→project
+transitions like `Works · BhashaBuddy → Satark.ai` — so a drop can be pinned to
+the moment it happens rather than guessed at from a screenshot.
 
 ### Suggested test matrix (run each on the target device with `&stats=1`)
 
