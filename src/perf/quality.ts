@@ -90,7 +90,7 @@ function resolve(): Quality {
       Number.isFinite(transOverride) && transOverride > 0
         ? transOverride
         : preset.transmissionScale,
-    showStats: params.get('stats') === '1',
+    showStats: params.get('stats') === '1' || params.get('log') === '1',
     source,
   }
 }
