@@ -7,13 +7,12 @@ import {
   MathUtils,
   PlaneGeometry,
   ShaderMaterial,
-  SRGBColorSpace,
-  TextureLoader,
 } from 'three'
 
 import { PROJECTS, type Project } from './projects'
 import { SCROLL, galleryActive } from './scrollConfig'
 import { scrollProgress, scrollVelocity } from './scrollProgress'
+import { getProjectTexture, prewarmProjectTextures } from './projectTextures'
 import { LIVE } from '../dev/live'
 import { registerControls } from '../dev/controls'
 
@@ -138,13 +137,13 @@ function Frame({
   const groupRef = useRef<Group>(null)
   const camera = useThree((state) => state.camera)
 
-  const texture = useMemo(() => {
-    if (!project.image) return null
-    const t = new TextureLoader().load(project.image)
-    t.colorSpace = SRGBColorSpace
-    t.anisotropy = 8
-    return t
-  }, [project.image])
+  // Shared, pre-uploaded texture (see projectTextures). Not created or disposed
+  // here — the cache owns it — so scrolling a frame into view never triggers a
+  // decode/upload stall.
+  const texture = useMemo(
+    () => (project.image ? getProjectTexture(project.image) : null),
+    [project.image],
+  )
 
   const material = useMemo(() => {
     const g = SCROLL.gallery
@@ -168,11 +167,12 @@ function Frame({
   }, [texture])
 
   useEffect(() => {
+    // The texture is shared and owned by the cache — only the per-frame material
+    // is disposed here.
     return () => {
-      texture?.dispose()
       material.dispose()
     }
-  }, [texture, material])
+  }, [material])
 
   useFrame(() => {
     const group = groupRef.current
@@ -284,12 +284,23 @@ function worksRange(
 
 export function ProjectFrames() {
   const g = SCROLL.gallery
+  const gl = useThree((state) => state.gl)
   const geometry = useMemo(
     // Enough width segments for the baked cos bend to read smooth.
     () => new PlaneGeometry(g.size[0], g.size[1], 40, 1),
     [g.size],
   )
   useEffect(() => () => geometry.dispose(), [geometry])
+
+  // Decode + upload every preview to the GPU up front (during the initial load),
+  // so a project scrolling into view never stalls on a texture upload. Measured
+  // to remove the ~100–290 ms hitches at the project transitions.
+  useEffect(() => {
+    prewarmProjectTextures(
+      gl,
+      PROJECTS.map((p) => p.image).filter((u): u is string => !!u),
+    )
+  }, [gl])
 
   // Every works knob, on its own panel (control_works, right side) so it never
   // gets muddled with the wall/hero controls. All write straight to LIVE, read
