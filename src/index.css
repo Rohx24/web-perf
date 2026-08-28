@@ -1,0 +1,954 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #0e0f11;
+}
+
+body {
+  color: #e8ecf2;
+  font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+canvas {
+  display: block;
+}
+
+/* The renderer stays pinned to the viewport; the page scrolls behind it. */
+.rd-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+}
+
+/* Gives the document its height so there is something to scroll. */
+.rd-scroll-spacer {
+  position: relative;
+  width: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* The synced text layer. Ignores the pointer except where re-enabled. */
+.rd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  user-select: none;
+}
+
+.rd-brand {
+  position: absolute;
+  top: 28px;
+  left: 32px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rd-brand-sub {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.4em;
+  color: #8a93a3;
+}
+
+/* Top navigation bar — Alche-style. */
+.rd-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26px 40px;
+  color: #f4f7ff;
+}
+.rd-nav-brand {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+}
+.rd-nav-links {
+  display: flex;
+  gap: 44px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+.rd-nav-links a {
+  color: #dfe4ee;
+  text-decoration: none;
+  pointer-events: auto;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+}
+.rd-nav-links a:hover {
+  opacity: 1;
+}
+.rd-nav-cta {
+  pointer-events: auto;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: #f4f7ff;
+  text-decoration: none;
+  padding: 11px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.rd-nav-cta:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.rd-works {
+  position: absolute;
+  top: 50%;
+  left: 26px;
+  transform-origin: left center;
+  transform: rotate(-90deg) translateX(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5em;
+  color: #cdd5e2;
+  opacity: 0;
+}
+
+.rd-hint {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5em;
+  color: #9aa3b2;
+}
+
+/* The active project, big and legible on the main display, bottom-left. */
+.rd-active {
+  position: absolute;
+  left: 48px;
+  bottom: 8%;
+  max-width: 48rem;
+  pointer-events: none;
+  color: #ffffff;
+  transition: opacity 0.25s ease;
+}
+.rd-active-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 12px;
+  font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.26em;
+  color: #aeb6c4;
+}
+.rd-active-index {
+  color: #ffffff;
+}
+.rd-active-tag {
+  text-transform: uppercase;
+}
+.rd-active-title {
+  font: 700 clamp(2.2rem, 5.2vw, 4.8rem) / 0.98 'Space Grotesk', 'Russo One',
+    system-ui, sans-serif;
+  letter-spacing: -0.015em;
+  text-shadow: 0 2px 34px rgba(0, 0, 0, 0.55);
+}
+.rd-active-tech {
+  margin-top: 16px;
+  font: 500 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+  color: #c6cdda;
+}
+/* The live-site link for the featured project. The one interactive element in
+   the lower-left copy block, so it opts back into pointer events. */
+.rd-active-visit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 22px;
+  padding: 10px 18px;
+  border: 1px solid #ffffff33;
+  border-radius: 999px;
+  pointer-events: auto;
+  font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #eaf1ff;
+  background: #ffffff0d;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.rd-active-visit:hover {
+  background: #ffffff1a;
+  border-color: #ffffff66;
+  transform: translateY(-1px);
+}
+
+/* The active project's detail, lower-left. */
+.rd-detail {
+  position: absolute;
+  left: 64px;
+  bottom: 12%;
+  max-width: 30rem;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+.rd-detail-index {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  margin-bottom: 10px;
+}
+
+.rd-detail-title {
+  margin: 0 0 14px;
+  font-size: clamp(1.9rem, 4vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+}
+
+.rd-detail-blurb {
+  margin: 0 0 20px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #b9c1cf;
+}
+
+.rd-detail-tech {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rd-detail-tech li {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #cdd5e2;
+  padding: 5px 11px;
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+}
+
+/* Live project embed. Sized in px (see EMBED.wPx/hPx) and mapped to the pane's
+   preview frame by the drei transform, so it yaws and scales with the card. */
+.rd-embed {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0b0e14;
+  box-shadow: 0 0 50px rgba(120, 160, 255, 0.2);
+  transition: opacity 0.25s ease;
+}
+.rd-embed iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+/* Highlighted index, in front of the live preview. */
+.rd-embed-index {
+  position: absolute;
+  right: 20px;
+  bottom: 12px;
+  font-size: 128px;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.92;
+  text-shadow: 0 0 26px currentColor;
+  pointer-events: none;
+}
+/* Redirect to the live site. */
+.rd-embed-visit {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 8px 15px;
+  border: 1px solid;
+  border-radius: 999px;
+  background: rgba(10, 12, 20, 0.62);
+  text-decoration: none;
+  pointer-events: auto;
+  backdrop-filter: blur(4px);
+}
+
+/* Hero → gallery transport: flash + WORKS intertitle. */
+.rd-intertitle {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+.rd-flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  mix-blend-mode: screen;
+}
+/* Same display face as the hero wall's typography. */
+@font-face {
+  font-family: 'Russo One';
+  src: url('/fonts/russo-one.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+.rd-works-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Russo One', 'Space Grotesk', sans-serif;
+  font-size: clamp(6rem, 26vw, 28rem);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  will-change: transform, opacity;
+  /* Bend the letters around the viewer, matching the curved LED wall. */
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+.rd-works-letter {
+  display: inline-block;
+  /* Ghosted, like Alche: a white/grey outline holds the letterform while the
+     fill is a dull, barely-there milky wash you can all but see the wall
+     through. Stroke painted over the fill so the border stays crisp. */
+  color: rgba(228, 231, 238, 0.12);
+  -webkit-text-fill-color: rgba(228, 231, 238, 0.12);
+  -webkit-text-stroke: 2px rgba(236, 238, 243, 0.8);
+  paint-order: stroke fill;
+}
+
+/* Phase 4 — the portal finale + white about-me screen. */
+.rd-finale {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Pixel dissolve that fills in before the white screen slots up. */
+.rd-pixels {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* The closing dissolve — the inverse of the intro grid. Sits ABOVE the white
+   panel (later in the DOM) so its dark cells wipe over the profile as the
+   contact page rises; opacity is driven down to reveal the CRT once full. */
+.rd-pixels-out {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+/* The scroll stretch the closing dissolve plays across — empty room, the same
+   light as the profile, so the dark grid has somewhere to rain down before the
+   black contact abyss. */
+.rd-grid-gap {
+  height: 120vh;
+  pointer-events: none;
+}
+
+/* The white about-me screen — slots up over the dissolve. */
+.rd-white {
+  position: absolute;
+  inset: 0;
+  background: #f4f5f7;
+  color: #0e0f11;
+  transform: translateY(100%);
+  will-change: transform;
+  --ink: #0e0f11;
+  --muted: #5a6472;
+  --body: #2b3038;
+  --line: #0e0f1118;
+  --accent: #6a4bff;
+}
+/* The profile scrolls within the panel once it has slotted up. The nested
+ * scrollbar is hidden so there is no second, different-looking slider. Crucially
+ * NO `overscroll-behavior: contain` here — with it, the wheel got trapped at the
+ * panel's top and you couldn't scroll back up to the hero; without it the scroll
+ * chains to the page at the boundary, so scrolling up past the top of the about
+ * panel carries you back into the 3D scene. */
+.rd-white-scroll {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: clamp(48px, 8vw, 128px) clamp(32px, 8vw, 160px);
+}
+.rd-white-scroll::-webkit-scrollbar {
+  display: none;
+}
+.rd-white-inner {
+  width: 100%;
+  max-width: 62rem;
+  margin: 0 auto;
+}
+/* Each section fades up as it enters view (IntersectionObserver adds .rd-in). */
+.rd-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.rd-reveal.rd-in {
+  opacity: 1;
+  transform: none;
+}
+.rd-w-sec {
+  margin-bottom: clamp(56px, 8vw, 104px);
+}
+.rd-w-sec:last-child {
+  margin-bottom: 0;
+}
+/* About */
+.rd-w-bio b {
+  color: var(--ink);
+  font-weight: 700;
+}
+.rd-w-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(12px, 2vw, 22px);
+  margin-top: 36px;
+}
+.rd-w-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff66;
+}
+.rd-w-stat-n {
+  font: 400 clamp(1.9rem, 3.4vw, 2.8rem) / 1 'Russo One', 'Space Grotesk', sans-serif;
+  color: var(--ink);
+}
+.rd-w-stat-l {
+  font: 500 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* Skills */
+.rd-w-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px clamp(28px, 5vw, 64px);
+  margin-bottom: 28px;
+}
+.rd-w-bar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 9px;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.rd-w-bar-lvl {
+  font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.rd-w-bar-track {
+  height: 3px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.rd-w-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #22d3ee, var(--accent));
+}
+/* Achievements / Certifications / Beyond — shared list */
+.rd-w-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.rd-w-list li {
+  padding: 26px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rd-w-list h3 {
+  margin: 0 0 6px;
+  font-size: clamp(1.05rem, 1.7vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.rd-w-list-meta {
+  display: block;
+  margin-bottom: 12px;
+  font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.rd-w-list p {
+  margin: 0;
+  max-width: 46rem;
+  font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+  line-height: 1.6;
+  color: var(--body);
+}
+/* The RD mark returning as a closing beat before the final projects. */
+.rd-w-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: clamp(64px, 11vw, 150px) 0;
+  margin-bottom: clamp(56px, 8vw, 104px);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.rd-w-mark-glyph {
+  font: 400 clamp(5rem, 18vw, 14rem) / 0.9 'Russo One', 'Space Grotesk', sans-serif;
+  letter-spacing: 0.04em;
+  background: linear-gradient(120deg, var(--accent), #22d3ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.rd-w-mark-sub {
+  font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* The big closing CTA — the definitive end of the site. */
+.rd-w-close-head {
+  margin: 0 0 20px;
+  font: 400 clamp(2.6rem, 8vw, 6rem) / 0.92 'Russo One', 'Space Grotesk', sans-serif;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.rd-w-close-sub {
+  margin: 0 0 32px;
+  max-width: 34rem;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.55;
+  color: var(--body);
+}
+.rd-w-close-mail {
+  display: inline-block;
+  margin-bottom: 40px;
+  font: 600 clamp(1.1rem, 2.6vw, 2rem) / 1.1 'Space Grotesk', sans-serif;
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.2s ease;
+  word-break: break-word;
+}
+.rd-w-close-mail:hover {
+  border-color: var(--accent);
+}
+.rd-w-foot {
+  margin-top: clamp(56px, 9vw, 110px);
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  font: 500 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+/* --- The dark descent + CRT abyss ending -------------------------------- */
+.rd-ending {
+  position: relative;
+  /* Break out of the scroll's horizontal padding so the ending is FULL WIDTH —
+     that padding was the white bars showing down the sides. */
+  margin: 0 calc(-1 * clamp(32px, 8vw, 160px));
+  background: #000;
+  padding: 0 0 0;
+  color: #eef2f8;
+  --ink: #eef2f8;
+  --muted: #8791a3;
+  --body: #c2cad8;
+  --line: #ffffff1a;
+  --accent: #8b6dff;
+}
+.rd-ending .rd-white-inner {
+  margin: 0 auto;
+}
+/* The contact page is a full-screen overlay pulled UP from the bottom by the
+   closing dissolve (JS drives translateY 100% → 0). It ignores the pointer so
+   the wheel still scrolls the profile panel behind it (scroll back up works);
+   only the links inside re-enable clicks. */
+.rd-crt-abyss {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(40px, 8vw, 120px) 24px;
+  background: #000;
+  transform: translateY(100%);
+  will-change: transform;
+  pointer-events: none;
+}
+/* The hero LED wall, recreated as a dot matrix running colour programmes — the
+   backdrop behind the CRT. No logo, nothing else. */
+.rd-led-wall {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+}
+/* Toned-down hero hue-cycle, pooled only behind the set. */
+.rd-crt-glow {
+  position: absolute;
+  width: min(70vmin, 620px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  background: conic-gradient(
+    from 0deg,
+    #6a4bff,
+    #22d3ee,
+    #10b981,
+    #f59e0b,
+    #ec4899,
+    #6a4bff
+  );
+  animation: rd-crt-spin 20s linear infinite;
+}
+@keyframes rd-crt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.rd-crt {
+  position: relative;
+  width: min(820px, 92vw);
+  padding: 30px 30px 44px;
+  border-radius: 26px;
+  background: linear-gradient(160deg, #2a2c31, #141518 55%, #0c0d10);
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.14),
+    inset 0 -8px 20px rgba(0, 0, 0, 0.7),
+    0 40px 90px rgba(0, 0, 0, 0.75);
+}
+.rd-crt-screen {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 24px;
+  overflow: hidden;
+  background: radial-gradient(120% 120% at 50% 45%, #0b1418, #04070a 70%, #010203);
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.9),
+    inset 0 0 14px rgba(120, 180, 255, 0.16);
+}
+/* The constant snow veil over the live LED screen. A fixed, semi-transparent
+   layer (not driven per-frame) so the wall's colour programme always shows
+   through the grey-black interference — an old TV displaying a channel under
+   static. Raise the opacity for heavier snow, lower it for a clearer picture. */
+.rd-crt-static {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.4;
+  image-rendering: pixelated;
+}
+/* The live LED mini-scene renderer, filling the screen behind the snow. */
+.rd-crt-live {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.rd-crt-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.28) 3px
+  );
+  animation: rd-crt-roll 8s linear infinite;
+}
+@keyframes rd-crt-roll {
+  to {
+    background-position-y: 120px;
+  }
+}
+.rd-crt-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 8% 12%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #dbeaff;
+  text-shadow:
+    0 0 8px rgba(120, 180, 255, 0.55),
+    0.6px 0 0 rgba(255, 0, 80, 0.4),
+    -0.6px 0 0 rgba(0, 200, 255, 0.4);
+}
+.rd-crt-ch {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: #7fd0ff;
+  opacity: 0.85;
+}
+.rd-crt-head {
+  margin: 0;
+  font: 700 clamp(1.4rem, 4vw, 2.4rem) / 1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.02em;
+  color: #eaf4ff;
+}
+.rd-crt-mail {
+  font-size: clamp(0.7rem, 1.8vw, 0.95rem);
+  letter-spacing: 0.04em;
+  color: #7fe0d0;
+  text-decoration: none;
+  word-break: break-all;
+  pointer-events: auto;
+}
+.rd-crt-mail:hover {
+  color: #aef7ea;
+}
+.rd-crt-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  justify-content: center;
+  margin-top: 6px;
+}
+.rd-crt-links a {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #cfe6ff;
+  text-decoration: none;
+  pointer-events: auto;
+}
+.rd-crt-links a:hover {
+  color: #fff;
+}
+.rd-crt-badge {
+  margin-top: 16px;
+  text-align: right;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.2em;
+  color: #6b7280;
+}
+.rd-w-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(28px, 5vw, 56px);
+}
+.rd-mono {
+  margin: 0;
+  font: 800 20px/1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+.rd-w-avail {
+  font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.rd-w-name {
+  margin: 0 0 12px;
+  font: 400 clamp(3rem, 9vw, 7rem) / 0.92 'Russo One', 'Space Grotesk', sans-serif;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  will-change: opacity, transform;
+}
+.rd-w-role {
+  margin: 0 0 clamp(36px, 6vw, 64px);
+  font: 500 clamp(0.8rem, 1.1vw, 0.95rem) / 1.4 ui-monospace, SFMono-Regular,
+    Menlo, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  will-change: opacity, transform;
+}
+.rd-w-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: clamp(28px, 5vw, 72px);
+  margin-bottom: clamp(36px, 5vw, 60px);
+}
+.rd-w-block {
+  will-change: opacity, transform;
+}
+.rd-w-label {
+  display: block;
+  margin-bottom: 16px;
+  font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.rd-w-bio {
+  margin: 0 0 22px;
+  font-size: clamp(1rem, 1.3vw, 1.18rem);
+  line-height: 1.6;
+  color: var(--body);
+}
+.rd-w-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rd-w-skills span {
+  font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--body);
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.rd-w-highlights {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rd-w-highlights li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.rd-w-highlights li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.rd-w-highlights b {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.rd-w-highlights span {
+  font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.rd-w-work {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.rd-w-work li a,
+.rd-w-work-row {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto auto;
+  align-items: baseline;
+  gap: 16px;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: var(--ink);
+  transition: padding 0.25s ease, color 0.2s ease;
+}
+.rd-w-work li a:hover {
+  padding-left: 14px;
+  color: var(--accent);
+}
+.rd-w-work-i {
+  font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+}
+.rd-w-work-t {
+  font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.rd-w-work-c {
+  font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rd-w-work-go {
+  color: var(--accent);
+}
+.rd-w-contact {
+  will-change: opacity, transform;
+}
+.rd-w-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin-top: 4px;
+}
+.rd-w-links a {
+  font: 500 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.rd-w-links a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@media (max-width: 900px) {
+  .rd-w-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .rd-w-bars {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .rd-w-stats {
+    grid-template-columns: 1fr;
+  }
+}

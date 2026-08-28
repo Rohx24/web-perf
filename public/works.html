@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Works — Rohit Diggi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #06070a;
+        --ink: #eef2f8;
+        --muted: #838b9b;
+        --line: #ffffff14;
+        --accent: #6a4bff;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body {
+        background:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84'%3E%3Cpath d='M42 36v12M36 42h12' stroke='%23ffffff' stroke-opacity='0.10' stroke-width='1'/%3E%3C/svg%3E")
+            0 0 / 84px 84px,
+          radial-gradient(120% 80% at 50% -10%, #0e1018 0%, var(--bg) 60%);
+        color: var(--ink);
+        font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      a { color: inherit; }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      .wrap { max-width: 1360px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px); }
+
+      /* --- Nav --------------------------------------------------------------- */
+      nav {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 22px clamp(20px, 5vw, 72px);
+        background: linear-gradient(#06070aee, #06070a88 70%, #06070a00);
+        backdrop-filter: blur(6px);
+      }
+      .brand { font-weight: 700; letter-spacing: 0.28em; font-size: 16px; text-decoration: none; }
+      .nav-right { display: flex; gap: clamp(16px, 3vw, 34px); font-size: 13px; align-items: center; }
+      .nav-right a { color: var(--ink); text-decoration: none; opacity: 0.82; transition: opacity 0.2s, color 0.2s; }
+      .nav-right a:hover { opacity: 1; color: #fff; }
+      .nav-cta {
+        padding: 9px 18px; border: 1px solid #ffffff33; border-radius: 999px;
+        font-size: 12px; opacity: 1 !important;
+      }
+      .nav-cta:hover { background: #ffffff12; border-color: #ffffff66; }
+
+      /* --- Hero -------------------------------------------------------------- */
+      header { position: relative; padding: clamp(70px, 12vw, 150px) 0 clamp(40px, 7vw, 90px); }
+      .eyebrow { color: var(--muted); font-size: 12px; }
+      h1 {
+        font-size: clamp(4rem, 20vw, 17rem);
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 0.82;
+        margin: 14px 0 22px;
+        background: linear-gradient(180deg, #ffffff 0%, #cdd4e2 55%, #8891a5 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .lede { color: var(--muted); font-size: clamp(0.95rem, 1.5vw, 1.2rem); max-width: 40rem; line-height: 1.6; }
+      .count { position: absolute; right: clamp(20px, 5vw, 72px); bottom: clamp(40px, 7vw, 90px); text-align: right; color: var(--muted); font-size: 12px; }
+      .count b { display: block; color: var(--ink); font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 700; letter-spacing: -0.02em; }
+
+      /* --- Rotated edge label ------------------------------------------------ */
+      .edge {
+        position: fixed; left: 10px; top: 50%; z-index: 5;
+        transform: translateY(-50%) rotate(180deg); writing-mode: vertical-rl;
+        color: #ffffff40; font-size: 11px; letter-spacing: 0.5em; pointer-events: none;
+      }
+
+      /* --- Work slabs -------------------------------------------------------- */
+      .works { display: flex; flex-direction: column; gap: clamp(90px, 15vw, 220px); padding: clamp(30px, 6vw, 80px) 0 clamp(80px, 12vw, 160px); }
+      .work {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: clamp(28px, 5vw, 80px);
+        align-items: center;
+        position: relative;
+      }
+      .work.flip { grid-template-columns: 0.85fr 1.15fr; }
+      .work.flip .media { order: 2; }
+      .work.flip .copy { order: 1; }
+
+      .ghost-num {
+        position: absolute; z-index: 0; top: -0.42em; font-weight: 700;
+        font-size: clamp(9rem, 22vw, 20rem); line-height: 1;
+        color: transparent; -webkit-text-stroke: 1px #ffffff12; letter-spacing: -0.04em;
+        pointer-events: none; user-select: none;
+      }
+      .work:not(.flip) .ghost-num { right: 2%; }
+      .work.flip .ghost-num { left: 2%; }
+
+      /* Media slab — slanted, framed, with a soft accent glow and a chrome edge. */
+      .media { position: relative; z-index: 1; }
+      .frame {
+        position: relative; border-radius: 16px; overflow: hidden;
+        border: 1px solid #ffffff1f;
+        box-shadow: 0 40px 90px rgba(0,0,0,0.6), inset 0 1px 0 #ffffff22;
+        transform: perspective(1600px) rotateY(var(--ry, -6deg)) rotateX(2deg);
+        transition: transform 0.5s cubic-bezier(0.22,1,0.36,1), box-shadow 0.5s;
+        will-change: transform;
+      }
+      .work.flip .frame { --ry: 6deg; }
+      .work:hover .frame { transform: perspective(1600px) rotateY(0deg) rotateX(0deg) translateY(-4px); box-shadow: 0 50px 120px rgba(0,0,0,0.7), 0 0 0 1px #ffffff40; }
+      .frame::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(120% 90% at 30% 0%, #ffffff14, transparent 55%);
+      }
+      .frame img { display: block; width: 100%; height: auto; }
+      .accent-wash {
+        position: absolute; inset: -30% -10% -30% -10%; z-index: 0; filter: blur(70px);
+        opacity: 0.5; background: radial-gradient(closest-side, var(--accent), transparent 75%);
+        pointer-events: none;
+      }
+
+      /* Copy column */
+      .copy { position: relative; z-index: 2; }
+      .copy .meta { display: flex; align-items: baseline; gap: 14px; color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+      .copy .meta .num { color: #fff; }
+      .copy .meta .tag { color: var(--accent); }
+      .copy h2 { font-size: clamp(2rem, 4.6vw, 3.9rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.0; margin-bottom: 18px; }
+      .copy p { color: #c2c9d6; font-size: clamp(0.95rem, 1.35vw, 1.12rem); line-height: 1.65; max-width: 34rem; }
+      .tech { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 26px; }
+      .tech span { font-size: 11px; letter-spacing: 0.1em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+      .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+      .btn {
+        display: inline-flex; align-items: center; gap: 7px; text-decoration: none;
+        font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.16em; text-transform: uppercase;
+        padding: 12px 20px; border-radius: 999px; transition: transform 0.2s, background 0.2s, border-color 0.2s;
+      }
+      .btn.visit { color: #06070a; background: var(--accent); border: 1px solid var(--accent); }
+      .btn.visit:hover { transform: translateY(-2px); filter: brightness(1.08); }
+      .btn.code { color: var(--ink); border: 1px solid #ffffff33; }
+      .btn.code:hover { transform: translateY(-2px); background: #ffffff12; border-color: #ffffff66; }
+
+      /* --- Archive (no live site yet) --------------------------------------- */
+      .archive { border-top: 1px solid var(--line); padding-top: clamp(30px, 5vw, 60px); }
+      .archive h3 { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+      .arow {
+        display: grid; grid-template-columns: 3rem 1fr auto auto; align-items: center; gap: 18px;
+        padding: 24px 6px; border-bottom: 1px solid var(--line);
+        text-decoration: none; color: var(--ink); transition: padding 0.25s, background 0.25s;
+      }
+      .arow:hover { padding-left: 16px; background: #ffffff08; }
+      .arow .aidx { color: var(--muted); font-size: 12px; }
+      .arow .atitle { font-size: clamp(1.2rem, 2.4vw, 1.9rem); font-weight: 600; }
+      .arow .atag { color: var(--accent); font-size: 11px; }
+      .arow .alink { color: var(--muted); font-size: 11px; letter-spacing: 0.14em; }
+      .arow[href] .alink { color: var(--ink); }
+
+      /* --- Footer ------------------------------------------------------------ */
+      footer { padding: clamp(60px, 10vw, 130px) 0 60px; text-align: center; }
+      .foot-word {
+        font-size: clamp(3rem, 15vw, 13rem); font-weight: 700; letter-spacing: -0.02em; line-height: 0.9;
+        background: linear-gradient(180deg, #ffffff 0%, #99a2b4 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent; opacity: 0.9;
+      }
+      .foot-meta { margin-top: 26px; color: var(--muted); font-size: 12px; display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; }
+      .foot-meta a { color: var(--muted); text-decoration: none; }
+      .foot-meta a:hover { color: #fff; }
+
+      /* --- Reveal on scroll -------------------------------------------------- */
+      .reveal { opacity: 0; transform: translateY(38px); transition: opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1); }
+      .reveal.in { opacity: 1; transform: none; }
+
+      @media (max-width: 860px) {
+        .work, .work.flip { grid-template-columns: 1fr; gap: 26px; }
+        .work.flip .media, .work.flip .copy { order: initial; }
+        .frame, .work.flip .frame { --ry: 0deg; transform: none; }
+        .ghost-num { display: none; }
+        .edge { display: none; }
+        .arow { grid-template-columns: 2.2rem 1fr; }
+        .arow .atag, .arow .alink { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .reveal { opacity: 1; transform: none; transition: none; }
+        html { scroll-behavior: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="edge">ROHIT DIGGI · WORKS</div>
+
+    <nav>
+      <a class="brand" href="/">ROHIT&nbsp;DIGGI</a>
+      <div class="nav-right mono">
+        <a href="/">Home ↩</a>
+        <a href="#archive">Archive</a>
+        <a class="nav-cta" href="mailto:rohitjd.btech23@rvu.edu.in">Contact ↗</a>
+      </div>
+    </nav>
+
+    <div class="wrap">
+      <header class="reveal">
+        <span class="eyebrow mono">Works · Selected</span>
+        <h1>Works</h1>
+        <p class="lede">Everything I've built — AI agents, safety tooling and language systems, shipped and live. Click through to the real thing.</p>
+        <div class="count mono"><b>07</b>projects</div>
+      </header>
+
+      <main class="works">
+        <!-- 01 Satark.ai -->
+        <section class="work reveal" style="--accent:#10b981">
+          <span class="ghost-num">01</span>
+          <div class="media">
+            <div class="accent-wash"></div>
+            <a class="frame" href="https://adaptive-honeypot-agent.vercel.app/" target="_blank" rel="noreferrer">
+              <img src="/previews/satark.webp" alt="Satark.ai preview" loading="lazy" />
+            </a>
+          </div>
+          <div class="copy">
+            <div class="meta mono"><span class="num">01</span><span class="tag">AI · Safety</span></div>
+            <h2>Satark.ai</h2>
+            <p>An adaptive honeypot agent that spots scam messages in real time and replies like a genuinely worried human — quietly extracting phone numbers, UPI IDs, bank accounts and phishing links while the scammer thinks they're winning.</p>
+            <div class="tech"><span>Python</span><span>NLP</span><span>Transformers</span><span>FastAPI</span></div>
+            <div class="cta">
+              <a class="btn visit" href="https://adaptive-honeypot-agent.vercel.app/" target="_blank" rel="noreferrer">Visit ↗</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- 02 BhashaBuddy -->
+        <section class="work flip reveal" style="--accent:#FB8C6B">
+          <span class="ghost-num">02</span>
+          <div class="media">
+            <div class="accent-wash"></div>
+            <a class="frame" href="https://parampara-one.vercel.app/" target="_blank" rel="noreferrer">
+              <img src="/previews/bhashabuddy.webp" alt="BhashaBuddy preview" loading="lazy" />
+            </a>
+          </div>
+          <div class="copy">
+            <div class="meta mono"><span class="num">02</span><span class="tag">AI · Language</span></div>
+            <h2>BhashaBuddy</h2>
+            <p>A conversational language companion that adapts to the learner. Kids pick up Indian languages through stories, voice and play — language that feels like a friend, with no pressure.</p>
+            <div class="tech"><span>LLMs</span><span>Speech</span><span>React</span><span>Python</span></div>
+            <div class="cta">
+              <a class="btn visit" href="https://parampara-one.vercel.app/" target="_blank" rel="noreferrer">Visit ↗</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- 03 PRISM -->
+        <section class="work reveal" style="--accent:#8b5cf6">
+          <span class="ghost-num">03</span>
+          <div class="media">
+            <div class="accent-wash"></div>
+            <a class="frame" href="https://prism-risk-rho.vercel.app/" target="_blank" rel="noreferrer">
+              <img src="/previews/parallel-risk.webp" alt="Parallel Risk-Assessment Agents preview" loading="lazy" />
+            </a>
+          </div>
+          <div class="copy">
+            <div class="meta mono"><span class="num">03</span><span class="tag">AI · Agents</span></div>
+            <h2>Parallel Risk-Assessment Agents</h2>
+            <p>PRISM — a swarm of agents evaluating a decision from many angles at once, then reconciling into a single risk read. A parallel-AI underwriting console that shows the whole board thinking.</p>
+            <div class="tech"><span>Multi-Agent</span><span>LLMs</span><span>Next.js</span><span>Relevance AI</span></div>
+            <div class="cta">
+              <a class="btn visit" href="https://prism-risk-rho.vercel.app/" target="_blank" rel="noreferrer">Visit ↗</a>
+              <a class="btn code" href="https://github.com/Rohx24/prism-risk" target="_blank" rel="noreferrer">Code ↗</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- 04 AI Boardroom -->
+        <section class="work flip reveal" style="--accent:#D6A34E">
+          <span class="ghost-num">04</span>
+          <div class="media">
+            <div class="accent-wash"></div>
+            <a class="frame" href="https://ai-boardroom-umber.vercel.app/" target="_blank" rel="noreferrer">
+              <img src="/previews/ai-boardroom.webp" alt="AI Boardroom preview" loading="lazy" />
+            </a>
+          </div>
+          <div class="copy">
+            <div class="meta mono"><span class="num">04</span><span class="tag">AI · Agents</span></div>
+            <h2>AI Boardroom</h2>
+            <p>A panel of AI personas that pressure-tests your idea like a real board — CEO, VC and engineers arguing it out, scrutinising the pitch until only the strong parts survive.</p>
+            <div class="tech"><span>LLMs</span><span>Agents</span><span>Prompt Systems</span></div>
+            <div class="cta">
+              <a class="btn visit" href="https://ai-boardroom-umber.vercel.app/" target="_blank" rel="noreferrer">Visit ↗</a>
+              <a class="btn code" href="https://github.com/Rohx24/AI-boardroom" target="_blank" rel="noreferrer">Code ↗</a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Archive: research + native, no hosted demo -->
+      <section id="archive" class="archive reveal">
+        <h3 class="mono">More work</h3>
+        <div class="arow">
+          <span class="aidx mono">05</span>
+          <span class="atitle">Voice Translation</span>
+          <span class="atag mono">Edge AI · Raspberry Pi</span>
+          <span class="alink mono">On-device</span>
+        </div>
+        <div class="arow">
+          <span class="aidx mono">06</span>
+          <span class="atitle">Hybrid DL IDS</span>
+          <span class="atag mono">Research</span>
+          <span class="alink mono">Paper</span>
+        </div>
+        <a class="arow" href="https://github.com/Rohx24/Drivedash" target="_blank" rel="noreferrer">
+          <span class="aidx mono">07</span>
+          <span class="atitle">DriveDash</span>
+          <span class="atag mono">Android · Auto</span>
+          <span class="alink mono">Code ↗</span>
+        </a>
+      </section>
+    </div>
+
+    <footer class="reveal">
+      <div class="foot-word">ROHIT DIGGI</div>
+      <div class="foot-meta mono">
+        <a href="/">Home</a>
+        <a href="https://github.com/Rohx24" target="_blank" rel="noreferrer">GitHub ↗</a>
+        <a href="mailto:rohitjd.btech23@rvu.edu.in">Contact ↗</a>
+        <span>© 2026</span>
+      </div>
+    </footer>
+
+    <script>
+      // Reveal on scroll.
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        },
+        { threshold: 0.15 },
+      );
+      document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+      // Gentle parallax on the media slabs.
+      const slabs = [...document.querySelectorAll('.work')];
+      let ticking = false;
+      function parallax() {
+        const vh = window.innerHeight;
+        for (const s of slabs) {
+          const r = s.getBoundingClientRect();
+          const mid = r.top + r.height / 2;
+          const off = (mid - vh / 2) / vh; // -0.5..0.5-ish
+          const frame = s.querySelector('.frame');
+          if (frame) frame.style.setProperty('translate', '0 ' + (off * -22).toFixed(1) + 'px');
+        }
+        ticking = false;
+      }
+      addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(parallax); } }, { passive: true });
+      parallax();
+    </script>
+  </body>
+</html>
