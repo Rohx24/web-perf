@@ -112,6 +112,58 @@ canvas {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.7);
 }
+/* The brand never wraps to two lines (it did on phones, colliding with the
+   links). Everything below shrinks the bar to fit down to a ~360px phone. */
+.rd-nav-brand {
+  white-space: nowrap;
+}
+/* Tablets / large phones */
+@media (max-width: 820px) {
+  .rd-nav {
+    padding: 18px 22px;
+  }
+  .rd-nav-brand {
+    font-size: 14px;
+    letter-spacing: 0.16em;
+  }
+  .rd-nav-links {
+    gap: 22px;
+    font-size: 13px;
+  }
+  .rd-nav-cta {
+    font-size: 12px;
+    padding: 9px 16px;
+  }
+}
+/* Phones */
+@media (max-width: 520px) {
+  .rd-nav {
+    padding: 14px 14px;
+    gap: 10px;
+  }
+  .rd-nav-brand {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+  }
+  .rd-nav-links {
+    gap: 14px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .rd-nav-cta {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    padding: 7px 11px;
+  }
+}
+/* Very small phones (≈360px and under): drop the middle links, keep brand +
+   Contact so nothing collides; Work/About/Lab remain reachable in the About
+   panel and works page. */
+@media (max-width: 380px) {
+  .rd-nav-links {
+    display: none;
+  }
+}
 
 .rd-works {
   position: absolute;

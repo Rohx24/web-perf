@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Preload } from '@react-three/drei'
-import { QUALITY } from './perf/quality'
+import { QUALITY, IS_MOBILE } from './perf/quality'
 import { StatsProbe } from './perf/Stats'
 import { GridLayer } from './scene/GridLayer'
 import { MarkerLayer } from './scene/MarkerLayer'
@@ -78,7 +78,11 @@ export default function App() {
       <Wordmark />
       {/* Curved project frames orbiting the logo, in front of the glass. */}
       <ProjectFrames />
-      <HeroSystem />
+      {/* The transmission-glass hero GLB is dropped on phones/tablets: a mobile
+          GPU can't afford the whole-scene transmission pass + ~245k-vert model,
+          and the mobile layout doesn't need it. Desktop is untouched.
+          (?glb=1 forces it back on for testing.) */}
+      {!IS_MOBILE && <HeroSystem />}
       {/* Compile every material in the scene graph ONCE, at load — so a project
           frame scrolling into view never stalls the main thread on a first-time
           shader compile (was a ~200 ms spike as the first frame appeared).

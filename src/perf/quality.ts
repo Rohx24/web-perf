@@ -144,3 +144,17 @@ function resolve(): Quality {
 
 /** Resolved once at module load and shared everywhere. */
 export const QUALITY: Quality = resolve()
+
+/**
+ * True on phones / touch tablets. Used to drop the heaviest thing on mobile —
+ * the transmission-glass hero GLB — which a mobile GPU cannot afford and which
+ * the mobile layout does not need. `?glb=1` forces it back on for testing.
+ */
+export const IS_MOBILE: boolean = (() => {
+  const params = new URLSearchParams(
+    typeof window !== 'undefined' ? window.location.search : '',
+  )
+  if (params.get('glb') === '1') return false // force the GLB back on
+  if (params.get('mobile') === '1') return true // force mobile mode (test on desktop)
+  return isMobile()
+})()
