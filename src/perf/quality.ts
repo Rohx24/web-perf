@@ -1,59 +1,102 @@
 /**
- * Performance quality tiers — a *test-harness* layer bolted on top of the site.
+ * Performance quality tiers, auto-selected from the device's specs at load.
  *
- * PRIME DIRECTIVE: the shipped default must look pixel-identical to the original.
- * So the default tier is `high`, whose numbers reproduce the site's existing
- * behaviour exactly (dpr capped at 2, transmission pass at full resolution).
- * The lower tiers only ever *reduce* fill-rate, and they are never selected on
- * their own — they are opt-in, chosen by a `?tier=` / `?auto=1` URL flag — so no
- * capable device is ever downgraded without being asked.
+ * The scene's cost floor is the glass transmission pass — a whole-scene re-render
+ * every frame. Strong GPUs eat it; weak integrated GPUs and phones choke on it.
+ * So at load we read the real GPU (via WebGL's unmasked renderer string), plus
+ * CPU cores / RAM / mobile signals, and pick a tier:
  *
- * This lets a real device be measured against each setting (open `?stats=1`)
- * and the acceptable trade decided from data, not guessed.
+ *   high — desktop discrete GPUs and Apple Silicon. Identical to the original
+ *          (DPR up to 2, transmission at full resolution). Strong machines are
+ *          never downgraded.
+ *   med  — midrange / integrated AMD.
+ *   low  — Intel integrated (Iris/UHD/HD) and mobile: DPR 1.25, transmission 0.4.
+ *          This is what turns a U-series laptop / phone from a slog into fluid.
  *
- * Everything here is read ONCE at load and frozen. Nothing here mutates per
- * frame, and nothing here touches the LED wall, its shader, colours or logic.
+ * A `?tier=high|med|low` URL param always overrides the auto choice (force the
+ * original look anywhere, or force low to test). `?dpr=` / `?transmission=` /
+ * `?fps=`-style fine overrides still apply on top.
+ *
+ * Nothing here mutates per frame, and nothing here touches the LED wall.
  */
 
 export type Tier = 'high' | 'med' | 'low'
 
 export interface Quality {
   tier: Tier
-  /** Upper bound handed to <Canvas dpr={[1, dprMax]}>. 2 = the original. */
   dprMax: number
-  /** renderer.transmissionResolutionScale. 1 = the original (full-res glass). */
   transmissionScale: number
-  /** Whether the FPS / draw-call overlay is shown. */
   showStats: boolean
-  /** How the tier was chosen, surfaced in the overlay for clarity. */
+  /** 'auto' (from specs), 'url' (forced by ?tier=), or 'default' (fallback). */
   source: 'default' | 'url' | 'auto'
+  /** Human-readable detection detail for the HUD (GPU string or the rule hit). */
+  detected: string
 }
 
-/**
- * Tier presets. `high` is the untouched original; `med`/`low` trade a sliver of
- * refraction sharpness and pixel density (imperceptible on a high-DPI phone) for
- * fill-rate headroom on a weak GPU.
- */
 const PRESETS: Record<Tier, Pick<Quality, 'dprMax' | 'transmissionScale'>> = {
   high: { dprMax: 2, transmissionScale: 1 },
   med: { dprMax: 1.5, transmissionScale: 0.6 },
   low: { dprMax: 1.25, transmissionScale: 0.4 },
 }
 
-/**
- * A deliberately conservative device sniff, used ONLY when `?auto=1` is set.
- * Reports `low` for clearly memory/thread-starved devices, `med` for midrange,
- * and otherwise `high`. It intentionally errs toward `high` — a false downgrade
- * on a capable device would break the visual promise, so the bar to step down is
- * kept high. (A weak laptop iGPU can still slip through this; that is what the
- * manual `?tier=` override is for.)
- */
-function detectTier(): Tier {
-  const cores = navigator.hardwareConcurrency ?? 8
-  const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 8
-  if (mem <= 4 || cores <= 4) return 'low'
-  if (mem <= 8 || cores <= 6) return 'med'
-  return 'high'
+/** Reads the unmasked GPU renderer string via a throwaway WebGL context. */
+function readGpuRenderer(): string {
+  if (typeof document === 'undefined') return ''
+  try {
+    const canvas = document.createElement('canvas')
+    const gl = (canvas.getContext('webgl2') ||
+      canvas.getContext('webgl')) as WebGLRenderingContext | null
+    if (!gl) return ''
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info')
+    const renderer = dbg
+      ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)
+      : gl.getParameter(gl.RENDERER)
+    // Free the throwaway context immediately.
+    gl.getExtension('WEBGL_lose_context')?.loseContext()
+    return String(renderer || '')
+  } catch {
+    return ''
+  }
+}
+
+function isMobile(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  if (/android|iphone|ipod|windows phone|iemobile|blackberry/i.test(ua)) return true
+  // iPadOS reports a desktop UA — catch it via touch + coarse pointer.
+  const coarse =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(pointer: coarse)').matches
+  if ((navigator.maxTouchPoints ?? 0) > 1 && coarse && /ipad|macintosh/i.test(ua)) {
+    return true
+  }
+  return false
+}
+
+/** Picks a tier from the device's specs. Errs toward `high` when unsure, so a
+ *  capable machine is never wrongly downgraded (which would break the look). */
+function detectTier(): { tier: Tier; detected: string } {
+  if (isMobile()) return { tier: 'low', detected: 'mobile' }
+
+  const gpu = readGpuRenderer()
+  const g = gpu.toLowerCase()
+
+  // Apple Silicon + desktop discrete GPUs → full quality.
+  if (/apple m\d|apple gpu/.test(g)) return { tier: 'high', detected: gpu }
+  if (/nvidia|geforce|\brtx\b|\bgtx\b|radeon rx|radeon pro|\barc\b/.test(g)) {
+    return { tier: 'high', detected: gpu }
+  }
+  // Intel integrated graphics (the U-series case) → low.
+  if (/intel|iris|uhd graphics|hd graphics/.test(g)) return { tier: 'low', detected: gpu }
+  // AMD integrated (Vega / Radeon Graphics, no RX) → med.
+  if (/amd|radeon/.test(g)) return { tier: 'med', detected: gpu }
+
+  // No usable GPU string — fall back to CPU cores / RAM.
+  const cores = navigator?.hardwareConcurrency ?? 8
+  const mem = (navigator as unknown as { deviceMemory?: number })?.deviceMemory ?? 8
+  if (mem <= 4 || cores <= 4) return { tier: 'low', detected: `cpu:${cores}c mem:${mem}` }
+  if (mem <= 8 || cores <= 6) return { tier: 'med', detected: `cpu:${cores}c mem:${mem}` }
+  return { tier: 'high', detected: gpu || `cpu:${cores}c mem:${mem}` }
 }
 
 function readParams(): URLSearchParams {
@@ -64,22 +107,25 @@ function readParams(): URLSearchParams {
 function resolve(): Quality {
   const params = readParams()
 
-  let tier: Tier = 'high'
-  let source: Quality['source'] = 'default'
+  let tier: Tier
+  let source: Quality['source']
+  let detected: string
 
   const requested = params.get('tier')
   if (requested === 'high' || requested === 'med' || requested === 'low') {
     tier = requested
     source = 'url'
-  } else if (params.get('auto') === '1') {
-    tier = detectTier()
+    detected = 'forced by ?tier'
+  } else {
+    // DEFAULT: auto-select from the device's specs.
+    const auto = detectTier()
+    tier = auto.tier
     source = 'auto'
+    detected = auto.detected
   }
 
   const preset = PRESETS[tier]
 
-  // Fine-grained per-knob overrides, so a single lever can be isolated on a real
-  // device (e.g. ?dpr=1.5 alone, transmission held at the tier's value).
   const dprOverride = Number(params.get('dpr'))
   const transOverride = Number(params.get('transmission'))
 
@@ -92,6 +138,7 @@ function resolve(): Quality {
         : preset.transmissionScale,
     showStats: params.get('stats') === '1' || params.get('log') === '1',
     source,
+    detected,
   }
 }
 

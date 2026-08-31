@@ -25,7 +25,7 @@ import { scrollProgress } from '../scroll/scrollProgress'
 const GRAPH_W = 260 // samples shown = pixels wide
 const GRAPH_H = 66
 const PAD = 8
-const TEXT_H = 92
+const TEXT_H = 108
 const FPS_CEIL = 120 // top of the graph
 
 export function StatsProbe() {
@@ -187,7 +187,8 @@ export function StatsProbe() {
       statText.current =
         `fps ${fps.toFixed(0).padStart(3)}   avg ${avg.toFixed(0)}   min ${min.toFixed(0)}   1% ${onePct.toFixed(0)}\n` +
         `ms  ${dt.toFixed(1)}   worst ${worstEver.current.toFixed(0)}fps   ${gl.getPixelRatio().toFixed(2)}dpr\n` +
-        `calls ${info.render.calls}   tris ${(info.render.triangles / 1000).toFixed(0)}k   ${QUALITY.tier}\n` +
+        `calls ${info.render.calls}   tris ${(info.render.triangles / 1000).toFixed(0)}k   tier ${QUALITY.tier}·${QUALITY.source}\n` +
+        `gpu ${QUALITY.detected.slice(0, 40)}\n` +
         `s ${scroll.toFixed(3)}  ${sectionNow.current}`
 
       if (recEl.current) {
@@ -202,7 +203,8 @@ export function StatsProbe() {
 
     const lines = statText.current.split('\n')
     for (let i = 0; i < lines.length; i++) {
-      c.fillStyle = i === 0 ? '#e9c76b' : i === 3 ? '#7fb3ff' : '#9aa0a6'
+      c.fillStyle =
+        i === 0 ? '#e9c76b' : i === 4 ? '#7fb3ff' : i === 3 ? '#c8b6ff' : '#9aa0a6'
       c.fillText(lines[i], PAD, PAD + i * 15)
     }
 

@@ -36,22 +36,28 @@ devices (lower DPR + cheaper glass), leaving strong machines untouched.
 
 **`public/` total: 112 MB → 2.8 MB.**
 
-### Opt-in quality tiers (for testing only — default is identical to the original)
+### Automatic quality tiers (auto-selected from the device's GPU)
 
-The default tier is `high`, which reproduces the original exactly: DPR capped at
-2, transmission (glass refraction) pass at full resolution. Lower tiers only
-reduce fill-rate — the single thing a weak GPU is short on — and are **never**
-selected automatically unless you ask.
+At load the app reads the real GPU (WebGL unmasked renderer string) plus CPU
+cores / RAM / mobile signals and picks a tier — so a weak machine gets the fast
+settings automatically while a strong one stays at full quality:
 
-Append to the URL:
+- **high** — Apple Silicon, desktop discrete GPUs (NVIDIA/AMD RX/Arc). DPR up to
+  2, transmission full-res — **identical to the original.** Strong machines are
+  never downgraded.
+- **med** — integrated AMD. DPR 1.5, transmission 0.6.
+- **low** — Intel integrated (Iris/UHD/HD) and mobile. DPR 1.25, transmission
+  0.4. This is what makes a U-series laptop / phone fluid.
+
+Open `?stats=1` and the HUD shows the detected GPU and the chosen `tier·source`.
+A `?tier=` param always overrides the auto choice.
 
 | Flag | Does |
 | --- | --- |
-| `?stats=1` | Shows an FPS / draw-call / triangle / DPR HUD (top-left). |
-| `?tier=high` | Default. DPR max **2**, transmission **1.0** — identical to the original. |
-| `?tier=med` | DPR max **1.5**, transmission **0.6**. |
-| `?tier=low` | DPR max **1.25**, transmission **0.4**. Biggest fill-rate cut. |
-| `?auto=1` | Picks a tier from `hardwareConcurrency` / `deviceMemory` (conservative — errs toward `high`). |
+| `?stats=1` | FPS / draw-call HUD — also shows the detected **GPU** and **tier·source**. |
+| `?tier=high` | Force full quality (DPR 2, transmission 1.0) — the original, on any device. |
+| `?tier=med` | Force DPR 1.5, transmission 0.6. |
+| `?tier=low` | Force DPR 1.25, transmission 0.4. |
 | `?dpr=1.5` | Override just the DPR cap (isolate one lever). |
 | `?transmission=0.5` | Override just the transmission-pass scale. |
 | `?log=1` | Real-time FPS graph **plus** per-frame CSV recording. A bottom bar shows `● REC N frames · <section>`; press **L** (or the button) to download the log, **R** to reset. |
