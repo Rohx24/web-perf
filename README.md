@@ -10,6 +10,18 @@ Every change here is either **visually lossless** (identical on all devices) or
 dot matrix, colours, palette ramp and glitch logic — was **not touched at all**.
 The default deployment is pixel-identical to the original.
 
+## Current status (Aug 2026)
+
+Shipped baseline (this commit): the visually-lossless wins below + the opt-in
+quality tiers + the stats/log HUD. An experimental reduced-motion toggle and an
+FPS cap were tried and **removed** — the FPS cap corrupted frame timing, and the
+toggle's backdrop-blur button cost a per-frame composite over the live canvas.
+
+Open item: on a weak GPU (a U-series laptop iGPU, or a phone) the full-quality
+scene is bottlenecked by the **glass transmission pass**, not by download size.
+The next step under discussion is an auto-applied lighter profile for weak
+devices (lower DPR + cheaper glass), leaving strong machines untouched.
+
 ## What changed, and why
 
 ### Always-on (visually lossless on every device)
