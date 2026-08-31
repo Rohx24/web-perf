@@ -8,6 +8,13 @@ import { VIEWER } from '../scene/roomConfig'
 import { attachScroll, scrollProgress, tickScroll } from './scrollProgress'
 import { usePointerState } from '../systems/InteractionController'
 import { registerControls } from '../dev/controls'
+import { IS_MOBILE } from '../perf/quality'
+
+// The scene is composed for a wide (landscape) frame. On a tall phone the wide
+// wordmark + wall crop off the sides. On mobile we widen the vertical FOV so the
+// horizontal extent stays as wide as this reference aspect — so the full name
+// fits instead of showing only its middle letters.
+const MOBILE_FIT_ASPECT = 1.15
 
 // A very slight cursor parallax on the camera — a rich, smooth lean toward the
 // pointer. Small metres of pan (translation) plus a touch of tilt (look-toward),
@@ -72,7 +79,17 @@ export function ScrollController() {
     // the hero is untouched.
     const cam = camera as PerspectiveCamera
     const zoom = MathUtils.smoothstep(scrollProgress(), 0, FOV_EASE_END)
-    const fov = MathUtils.lerp(heroFov.current, SCROLL_FOV, zoom)
+    let fov = MathUtils.lerp(heroFov.current, SCROLL_FOV, zoom)
+
+    // Mobile portrait: widen the vertical FOV so the horizontal view stays as
+    // wide as MOBILE_FIT_ASPECT — otherwise the oversized wordmark crops to just
+    // its middle letters on a narrow screen. Desktop is untouched.
+    if (IS_MOBILE && cam.aspect < MOBILE_FIT_ASPECT) {
+      const half = (fov * Math.PI) / 360
+      const fitRad = 2 * Math.atan((Math.tan(half) * MOBILE_FIT_ASPECT) / cam.aspect)
+      fov = Math.min(100, (fitRad * 180) / Math.PI)
+    }
+
     if (Math.abs(cam.fov - fov) > 1e-4) {
       cam.fov = fov
       cam.updateProjectionMatrix()

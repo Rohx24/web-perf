@@ -7,6 +7,12 @@ import { registerControls } from '../dev/controls'
 import { WORDMARK } from './wordmarkConfig'
 import { usePointerState } from './InteractionController'
 import { scrollProgress } from '../scroll/scrollProgress'
+import { IS_MOBILE } from '../perf/quality'
+
+// On mobile the wordmark is the hero (the glass GLB is gone) and the name must
+// read in full — the desktop size is drawn to bleed off both sides. Shrink it so
+// "ROHIT DIGGI" fits the narrow screen.
+const MOBILE_WORDMARK_SCALE = 0.56
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)))
@@ -219,7 +225,11 @@ export function Wordmark() {
   }
 
   return (
-    <group ref={drift} position={WORDMARK.position}>
+    <group
+      ref={drift}
+      position={WORDMARK.position}
+      scale={IS_MOBILE ? MOBILE_WORDMARK_SCALE : 1}
+    >
       {WORDMARK.glow.map((layer, index) => (
         <Text
           key={index}

@@ -4,6 +4,7 @@ import { scrollProgress } from './scrollProgress'
 import { LIVE } from '../dev/live'
 import { scrambleAll } from './scramble'
 import { CrtLedScreen } from './CrtLedScreen'
+import { IS_MOBILE } from '../perf/quality'
 
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x))
@@ -95,6 +96,38 @@ export function OutroWireframe() {
   // from calling setState on every frame.
   const [live, setLive] = useState(false)
   const liveRef = useRef(false)
+
+  // iOS scroll-trap fix: the About panel scrolls inside itself, and on desktop a
+  // mouse wheel chains back to the page at the panel's top so you return to the
+  // 3D scene. iOS touch does NOT chain that way, so a finger-drag gets trapped in
+  // the panel and you can't scroll back up. Here, while the panel is at its top,
+  // a downward drag is carried to the window scroll manually — which drives the
+  // scene back toward the works section.
+  useEffect(() => {
+    if (!IS_MOBILE) return
+    const panel = scrollRef.current
+    if (!panel) return
+
+    let lastY = 0
+    const onStart = (e: TouchEvent) => {
+      lastY = e.touches[0].clientY
+    }
+    const onMove = (e: TouchEvent) => {
+      const y = e.touches[0].clientY
+      const dy = y - lastY
+      lastY = y
+      // At (or above) the top of the panel and dragging DOWN → pull the page up.
+      if (panel.scrollTop <= 0 && dy > 0) {
+        window.scrollBy(0, -dy)
+      }
+    }
+    panel.addEventListener('touchstart', onStart, { passive: true })
+    panel.addEventListener('touchmove', onMove, { passive: true })
+    return () => {
+      panel.removeEventListener('touchstart', onStart)
+      panel.removeEventListener('touchmove', onMove)
+    }
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current

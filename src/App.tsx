@@ -86,8 +86,11 @@ export default function App() {
       {/* Compile every material in the scene graph ONCE, at load — so a project
           frame scrolling into view never stalls the main thread on a first-time
           shader compile (was a ~200 ms spike as the first frame appeared).
-          Visually lossless; does not touch the frame loop or timing. */}
-      <Preload all />
+          Visually lossless; does not touch the frame loop or timing.
+          Skipped on mobile: compiling the whole graph at once is a multi-second
+          stall on a weak phone GPU ("first launch incredibly laggy") — there we
+          let shaders compile lazily so the hero paints fast. */}
+      {!IS_MOBILE && <Preload all />}
       {/* FPS / draw-call HUD, only when ?stats=1. Costs nothing otherwise. */}
       {QUALITY.showStats && <StatsProbe />}
     </Canvas>
