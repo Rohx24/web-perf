@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { Preload } from '@react-three/drei'
 import { QUALITY } from './perf/quality'
 import { StatsProbe } from './perf/Stats'
 import { GridLayer } from './scene/GridLayer'
@@ -78,6 +79,11 @@ export default function App() {
       {/* Curved project frames orbiting the logo, in front of the glass. */}
       <ProjectFrames />
       <HeroSystem />
+      {/* Compile every material in the scene graph ONCE, at load — so a project
+          frame scrolling into view never stalls the main thread on a first-time
+          shader compile (was a ~200 ms spike as the first frame appeared).
+          Visually lossless; does not touch the frame loop or timing. */}
+      <Preload all />
       {/* FPS / draw-call HUD, only when ?stats=1. Costs nothing otherwise. */}
       {QUALITY.showStats && <StatsProbe />}
     </Canvas>
