@@ -631,16 +631,30 @@
 .intro-root.flying .intro-halo,
 .intro-root.flying .intro-spill { opacity: 0; transition: opacity 0.4s ease; }
 
-.intro-root.flying .intro-stage,
 .intro-root.flying .intro-left,
 .intro-root.flying .intro-corner,
 .intro-root.flying .intro-roll {
   opacity: 0;
-  transition: opacity 1.1s ease;
+  transition: opacity 0.7s ease;
   pointer-events: none;
 }
-/* the room recedes as the camera closes on the glass */
-.intro-root.flying .intro-plate { transition: scale 2.4s cubic-bezier(0.4, 0, 0.5, 1); scale: 1.14; }
+
+/* The room has to travel with the camera. Fading a motionless room while the
+   tube grows gives the eye nothing to measure against, and the brain reads the
+   only moving object as the thing that moved — the television. Pushing the
+   room past the viewer is the cue that says the viewpoint is travelling.
+   The origin is the tube, so the room opens away from it rather than from the
+   middle of the frame. */
+.intro-root.flying .intro-stage {
+  transform-origin: calc(var(--crt-left) + var(--crt-w) / 2) calc(var(--crt-top) + var(--crt-h) / 2);
+  animation: roomPush 2.6s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+  pointer-events: none;
+}
+@keyframes roomPush {
+  from { opacity: 1; scale: 1; }
+  55% { opacity: 0.55; }
+  to { opacity: 0; scale: 1.4; }
+}
 
 /* ?cam=1 — the editor needs the same full-frame canvas the flight uses */
 .intro-root.cam-mode .intro-set {

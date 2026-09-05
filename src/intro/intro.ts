@@ -10,12 +10,13 @@ import { createCrtScene, type CamKey, type CrtHandle, type ScreenLine } from './
  * looking at rather than a hard-coded guess.
  */
 const ENTER_PATH: CamKey[] = [
-  // key 0 must match the title framing on a full-frame canvas, or the flight
-  // starts with a jump. Solved for the current --crt-* values at 16:9.
-  { t: 0, cam: { px: -0.51, py: 0.29, pz: 3.45, tx: -0.51, ty: 0.29, tz: 0, fov: 30 } },
-  { t: 750, cam: { px: -0.3, py: 0.2, pz: 2.6, tx: -0.14, ty: 0.09, tz: 0, fov: 31 } },
-  { t: 1750, cam: { px: 0, py: 0.04, pz: 1.15, tx: 0, ty: 0, tz: 0, fov: 34 } },
-  { t: 2450, cam: { px: 0, py: 0, pz: 0.62, tx: 0, ty: 0, tz: 0, fov: 38 } },
+  // Key 0 is NOT listed: it is measured at run time with crt.matchBox() so the
+  // flight always begins on exactly the framing already on screen. Hard-coding
+  // it meant the tube jumped to a new spot the instant ENTER was pressed, which
+  // read as the television moving rather than the camera.
+  { t: 900, cam: { px: 0, py: 0.09, pz: 2.4, tx: 0, ty: 0, tz: 0, fov: 30, ox: 0.12, oy: -0.1 } },
+  { t: 1900, cam: { px: 0, py: 0.03, pz: 1.2, tx: 0, ty: 0, tz: 0, fov: 32, ox: 0, oy: 0 } },
+  { t: 2600, cam: { px: 0, py: 0, pz: 0.62, tx: 0, ty: 0, tz: 0, fov: 36, ox: 0, oy: 0 } },
 ]
 
 /** Copy shown on the tube during the transmission sequence. */
@@ -163,12 +164,16 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
        it. The camera is pinned to key 0 BEFORE the box changes size, so the
        ResizeObserver's refit can't snap the framing back on the way through. */
     const set = root.querySelector('.intro-set') as HTMLElement
-    crt.setCam(ENTER_PATH[0].cam)
+    // Measure the matching full-frame pose while the box is still the box —
+    // once the canvas fills the viewport that framing is gone.
+    const key0 = crt.matchBox()
+    crt.setCam(key0)
     root.appendChild(set)
     root.classList.add('flying')
 
     // 2. Fly, swelling the static as we close on the glass.
-    const FLIGHT = ENTER_PATH[ENTER_PATH.length - 1].t
+    const flight: CamKey[] = [{ t: 0, cam: key0 }, ...ENTER_PATH]
+    const FLIGHT = flight[flight.length - 1].t
     const t0 = performance.now()
     const ramp = () => {
       const p = Math.min(1, (performance.now() - t0) / FLIGHT)
@@ -176,7 +181,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
       if (p < 1) requestAnimationFrame(ramp)
     }
     requestAnimationFrame(ramp)
-    crt.playPath(ENTER_PATH, transmission)
+    crt.playPath(flight, transmission)
 
     /* rAF — and therefore the flight — is suspended entirely while the tab is
        hidden. Timers still fire, so this guarantees the handoff completes for

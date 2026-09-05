@@ -64,6 +64,11 @@ export interface CamState {
   px: number; py: number; pz: number
   tx: number; ty: number; tz: number
   fov: number
+  /** Off-axis frame shift in NDC (0 = subject on the camera axis). Lets the
+      tube sit off-centre without turning the camera, so the flight can begin
+      on exactly the title framing and glide to centre as a lens shift. */
+  ox?: number
+  oy?: number
 }
 export interface CamKey { t: number; cam: CamState }
 
@@ -175,6 +180,8 @@ export interface CrtHandle {
   setScreenText: (lines: ScreenLine[]) => void
   /** camera rig — used by the ?cam=1 keyframe editor and the ENTER flight */
   getCam: () => CamState
+  /** the full-frame pose that matches how the set is framed in its CSS box */
+  matchBox: () => CamState
   setCam: (c: CamState) => void
   /** back to the automatic framing that fits the set into its CSS box */
   clearCam: () => void
@@ -250,6 +257,14 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     camera.fov = c.fov
     camera.position.set(c.px, c.py, c.pz)
     camera.lookAt(c.tx, c.ty, c.tz)
+    const ox = c.ox ?? 0
+    const oy = c.oy ?? 0
+    // setViewOffset skews the frustum instead of moving the camera, so the
+    // subject shifts in frame with no change of viewing angle. Trucking the
+    // camera sideways to do the same job would swing us ~17 degrees round the
+    // tube and show a visibly different face of it.
+    if (ox !== 0 || oy !== 0) camera.setViewOffset(1000, 1000, -ox * 500, oy * 500, 1000, 1000)
+    else camera.clearViewOffset()
     camera.updateProjectionMatrix()
   }
 
@@ -307,6 +322,8 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       px: lerp(a.cam.px, b.cam.px, k), py: lerp(a.cam.py, b.cam.py, k), pz: lerp(a.cam.pz, b.cam.pz, k),
       tx: lerp(a.cam.tx, b.cam.tx, k), ty: lerp(a.cam.ty, b.cam.ty, k), tz: lerp(a.cam.tz, b.cam.tz, k),
       fov: lerp(a.cam.fov, b.cam.fov, k),
+      ox: lerp(a.cam.ox ?? 0, b.cam.ox ?? 0, k),
+      oy: lerp(a.cam.oy ?? 0, b.cam.oy ?? 0, k),
     }
     applyManual(manual)
   }
@@ -396,7 +413,30 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       pz: +camera.position.z.toFixed(3),
       tx: manual?.tx ?? 0, ty: manual?.ty ?? 0, tz: manual?.tz ?? 0,
       fov: camera.fov,
+      ox: manual?.ox ?? 0, oy: manual?.oy ?? 0,
     }),
+    matchBox: () => {
+      /* The pose that reproduces the current framing once the canvas goes
+         full-frame. Derived from the box's real rect rather than hard-coded,
+         so the flight starts on precisely what the visitor is looking at, at
+         any window shape. Pulling back by vh/boxHeight keeps the tube the same
+         on-screen size; the shift puts it back where the box had it. */
+      const r = container.getBoundingClientRect()
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const d0 = camera.position.z
+      if (!r.height || !vh) return { px: 0, py: CAM_Y, pz: d0, tx: 0, ty: 0, tz: 0, fov: camera.fov, ox: 0, oy: 0 }
+      const k = vh / r.height
+      return {
+        px: 0,
+        py: CAM_Y * k, // scaled with the distance so the tilt angle is preserved
+        pz: d0 * k,
+        tx: 0, ty: 0, tz: 0,
+        fov: camera.fov,
+        ox: (2 * (r.left + r.width / 2)) / vw - 1,
+        oy: 1 - (2 * (r.top + r.height / 2)) / vh,
+      }
+    },
     setCam: (c: CamState) => { path = null; manual = { ...c }; applyManual(manual) },
     clearCam: () => { path = null; manual = null; fitCamera() },
     playPath: (keys: CamKey[], onDone?: () => void) => {

@@ -72,10 +72,16 @@ const SLIDERS: Slider[] = [
   { key: 'ty', label: 'Aim Y', min: -3, max: 3, step: 0.01 },
   { key: 'tz', label: 'Aim Z', min: -4, max: 4, step: 0.01 },
   { key: 'fov', label: 'Lens', min: 8, max: 90, step: 1 },
+  // frame shift: moves the tube within the frame without turning the camera
+  { key: 'ox', label: 'Shift X', min: -1.5, max: 1.5, step: 0.005 },
+  { key: 'oy', label: 'Shift Y', min: -1.5, max: 1.5, step: 0.005 },
 ]
 
 export function mountCamRig (opts: { root: HTMLElement; crt: CrtHandle; initial?: CamKey[] }) {
   const { root, crt } = opts
+  // Measure the title framing BEFORE going full-frame — once the canvas fills
+  // the viewport the small box is gone and the pose can no longer be derived.
+  const titlePose = crt.matchBox()
   root.classList.add('cam-mode')
 
   const style = document.createElement('style')
@@ -85,8 +91,13 @@ export function mountCamRig (opts: { root: HTMLElement; crt: CrtHandle; initial?
   // Load the flight that is currently baked in, so this is a refining pass
   // rather than a blank page. Falls back to wherever the automatic framing has
   // the camera if there is no path yet.
-  const keys: CamKey[] = (opts.initial ?? []).map((k) => ({ t: k.t, cam: { ...k.cam } }))
-  const cam: CamState = keys.length ? { ...keys[0].cam } : crt.getCam()
+  // Key 0 is always the live title framing — the same pose the flight starts
+  // from at run time — so what you edit here is what visitors actually see.
+  const keys: CamKey[] = [
+    { t: 0, cam: { ...titlePose } },
+    ...(opts.initial ?? []).filter((k) => k.t > 0).map((k) => ({ t: k.t, cam: { ...k.cam } })),
+  ]
+  const cam: CamState = { ...keys[0].cam }
 
   const panel = document.createElement('div')
   panel.className = 'camrig'
@@ -107,7 +118,8 @@ export function mountCamRig (opts: { root: HTMLElement; crt: CrtHandle; initial?
             .map(
               (k) =>
                 `  { t: ${k.t}, cam: { px: ${fmt(k.cam.px)}, py: ${fmt(k.cam.py)}, pz: ${fmt(k.cam.pz)},` +
-                ` tx: ${fmt(k.cam.tx)}, ty: ${fmt(k.cam.ty)}, tz: ${fmt(k.cam.tz)}, fov: ${fmt(k.cam.fov)} } },`,
+                ` tx: ${fmt(k.cam.tx)}, ty: ${fmt(k.cam.ty)}, tz: ${fmt(k.cam.tz)}, fov: ${fmt(k.cam.fov)},` +
+                ` ox: ${fmt(k.cam.ox ?? 0)}, oy: ${fmt(k.cam.oy ?? 0)} } },`,
             )
             .join('\n') +
           '\n]'
@@ -144,8 +156,8 @@ export function mountCamRig (opts: { root: HTMLElement; crt: CrtHandle; initial?
   const syncSliders = () => {
     for (const s of SLIDERS) {
       const io = inputs.get(s.key)!
-      io.range.value = String(cam[s.key])
-      io.val.textContent = fmt(cam[s.key])
+      io.range.value = String(cam[s.key] ?? 0)
+      io.val.textContent = fmt(cam[s.key] ?? 0)
     }
   }
 
@@ -159,13 +171,13 @@ export function mountCamRig (opts: { root: HTMLElement; crt: CrtHandle; initial?
     range.min = String(s.min)
     range.max = String(s.max)
     range.step = String(s.step)
-    range.value = String(cam[s.key])
+    range.value = String(cam[s.key] ?? 0)
     const val = document.createElement('span')
     val.className = 'val'
-    val.textContent = fmt(cam[s.key])
+    val.textContent = fmt(cam[s.key] ?? 0)
     range.addEventListener('input', () => {
       cam[s.key] = Number(range.value)
-      val.textContent = fmt(cam[s.key])
+      val.textContent = fmt(cam[s.key] ?? 0)
       crt.setCam(cam)
     })
     row.append(label, range, val)
