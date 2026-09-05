@@ -1,5 +1,35 @@
 import './intro.css'
-import { createCrtScene, type CrtHandle } from './crtScene'
+import { createCrtScene, type CamKey, type CrtHandle, type ScreenLine } from './crtScene'
+
+/**
+ * The ENTER flight. Placeholder path until the keyframes come back from the
+ * ?cam=1 editor: hold on the title framing, then push in and settle square on
+ * the glass so the tube fills the frame for the transmission.
+ * Key 0 is filled in at run time from wherever the automatic framing has the
+ * camera, so the flight always starts from exactly what the visitor is
+ * looking at rather than a hard-coded guess.
+ */
+const ENTER_PATH: CamKey[] = [
+  // key 0 must match the title framing on a full-frame canvas, or the flight
+  // starts with a jump. Solved for the current --crt-* values at 16:9.
+  { t: 0, cam: { px: -0.51, py: 0.29, pz: 3.45, tx: -0.51, ty: 0.29, tz: 0, fov: 30 } },
+  { t: 750, cam: { px: -0.3, py: 0.2, pz: 2.6, tx: -0.14, ty: 0.09, tz: 0, fov: 31 } },
+  { t: 1750, cam: { px: 0, py: 0.04, pz: 1.15, tx: 0, ty: 0, tz: 0, fov: 34 } },
+  { t: 2450, cam: { px: 0, py: 0, pz: 0.62, tx: 0, ty: 0, tz: 0, fov: 38 } },
+]
+
+/** Copy shown on the tube during the transmission sequence. */
+const SIGNAL: ScreenLine[][] = [
+  [{ t: 'SIGNAL LOST.', s: 40, c: '#eaf1ff', b: true, gap: 0 }],
+  [
+    { t: 'SIGNAL LOST.', s: 34, c: '#9dc0ff', gap: 44 },
+    { t: 'RECONNECTING…', s: 40, c: '#eaf1ff', b: true, gap: 0 },
+  ],
+  [
+    { t: 'ROHIT DIGGI', s: 44, c: '#ffffff', b: true, gap: 40 },
+    { t: 'SYSTEM ONLINE.', s: 34, c: '#9dc0ff', gap: 0 },
+  ],
+]
 
 const MENU = [
   { id: 'enter', label: 'Enter System' },
@@ -73,6 +103,13 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   const look = params.get('look')
   if (look && /^[a-z]+$/.test(look)) root.classList.add(`look-${look}`)
 
+  // ?cam=1 opens the camera keyframe editor (dev only, lazily loaded).
+  if (params.get('cam') === '1') {
+    crt.onReady(() =>
+      import('./camrig').then((m) => m.mountCamRig({ root, crt, initial: ENTER_PATH })),
+    )
+  }
+
   // --- dust drifting through the lamp light ---
   const motes = root.querySelector('.intro-motes') as HTMLElement
   for (let i = 0; i < 14; i++) {
@@ -119,53 +156,64 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     if (entering) return
     entering = true
     const fade = root.querySelector('.intro-fade') as HTMLElement
-    const signal = root.querySelector('.intro-signal') as HTMLElement
 
-    // 1–4: ramp the CRT signal breakup (static + brightness surge).
+    /* 1. Go full-frame. The set normally lives in a 31%-wide box on the plate,
+       and you cannot fly a camera through a letterbox. Reparenting the element
+       keeps its WebGL context intact — only recreating the canvas would lose
+       it. The camera is pinned to key 0 BEFORE the box changes size, so the
+       ResizeObserver's refit can't snap the framing back on the way through. */
+    const set = root.querySelector('.intro-set') as HTMLElement
+    crt.setCam(ENTER_PATH[0].cam)
+    root.appendChild(set)
+    root.classList.add('flying')
+
+    // 2. Fly, swelling the static as we close on the glass.
+    const FLIGHT = ENTER_PATH[ENTER_PATH.length - 1].t
     const t0 = performance.now()
-    const DUR = 1200
-    let broke = false
     const ramp = () => {
-      const p = Math.min(1, (performance.now() - t0) / DUR)
-      crt.setEnter(p)
-      if (p > 0.5) root.classList.add('glitching')
+      const p = Math.min(1, (performance.now() - t0) / FLIGHT)
+      crt.setEnter(p * 0.45) // enough to feel the signal go, still legible
       if (p < 1) requestAnimationFrame(ramp)
-      else afterBreakup()
     }
     requestAnimationFrame(ramp)
-    // rAF is suspended entirely while the tab is hidden. Without this, a
-    // visitor who switches away mid-transition comes back to a frozen title
-    // screen that never hands off to the site. Timers still fire (throttled),
-    // so this guarantees the handoff completes either way.
-    window.setTimeout(() => { crt.setEnter(1); afterBreakup() }, DUR + 400)
+    crt.playPath(ENTER_PATH, transmission)
 
-    function afterBreakup () {
-      if (broke) return
-      broke = true
-      // 5–7: whiteout of static → fade to black.
+    /* rAF — and therefore the flight — is suspended entirely while the tab is
+       hidden. Timers still fire, so this guarantees the handoff completes for
+       a visitor who switches away mid-transition instead of stranding them on
+       a frozen title screen. */
+    const watchdog = window.setTimeout(transmission, FLIGHT + 600)
+
+    // 3. The transmission, played on the tube itself now that it fills the frame.
+    let started = false
+    function transmission () {
+      if (started) return
+      started = true
+      window.clearTimeout(watchdog)
+      crt.stopPath()
+      let i = 0
+      const step = () => {
+        crt.setEnter(i === 0 ? 0.95 : 0.5) // burst of snow, then it settles
+        crt.setScreenText(SIGNAL[i])
+        i += 1
+        window.setTimeout(i < SIGNAL.length ? step : handoff, 900)
+      }
+      step()
+    }
+
+    function handoff () {
       fade.classList.add('on')
       window.setTimeout(() => {
-        root.classList.remove('glitching')
-        const steps = ['SIGNAL LOST.', 'SIGNAL LOST.\n\nRECONNECTING…', 'ROHIT DIGGI\n\nSYSTEM ONLINE.']
-        let i = 0
-        signal.textContent = steps[0]
-        const seq = window.setInterval(() => {
-          i += 1
-          if (i < steps.length) { signal.textContent = steps[i]; return }
-          window.clearInterval(seq)
-          // Hand off to the real site (lazily mounted).
-          opts.onEnter(target)
-          // Kill the CRT NOW, while the black "SYSTEM ONLINE" screen still covers
-          // everything — so the CRT canvas can never bleed over the portfolio
-          // during the reveal fade. Then fade the black away to show the site.
-          crt.dispose()
-          window.setTimeout(() => {
-            root.style.transition = 'opacity 0.9s ease'
-            root.style.opacity = '0'
-            window.setTimeout(cleanup, 950)
-          }, 1200)
-        }, 780)
-      }, 520)
+        opts.onEnter(target)
+        // Kill the CRT while the black still covers everything, so its canvas
+        // can never bleed over the portfolio during the reveal.
+        crt.dispose()
+        window.setTimeout(() => {
+          root.style.transition = 'opacity 0.9s ease'
+          root.style.opacity = '0'
+          window.setTimeout(cleanup, 950)
+        }, 900)
+      }, 620)
     }
   }
 }

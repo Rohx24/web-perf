@@ -57,34 +57,50 @@ const SCREEN_LINES = [
   { t: '[ ENTER TO TRANSMIT ]', s: 22, c: '#ffffff', b: true, gap: 0 },
 ]
 
+export type ScreenLine = { t: string; s: number; c: string; b?: boolean; gap: number }
+
+/** Camera pose, the unit the keyframe editor records and the path player lerps. */
+export interface CamState {
+  px: number; py: number; pz: number
+  tx: number; ty: number; tz: number
+  fov: number
+}
+export interface CamKey { t: number; cam: CamState }
+
 /**
- * Draws the CRT copy once into a canvas whose aspect matches the screen quad
- * (65534 x 49926 in the GLB → 1.313), so nothing is stretched.
+ * The CRT's screen texture. Aspect matches the screen quad (65534 x 49926 in
+ * the GLB → 1.313) so nothing is stretched. Redrawable, so the transition can
+ * put SIGNAL LOST on the tube itself rather than on an overlay.
  */
-function makeTextTexture (): CanvasTexture {
+function makeScreenTexture () {
   const c = document.createElement('canvas')
   c.width = 1024
   c.height = 780
   const g = c.getContext('2d')!
-  g.clearRect(0, 0, c.width, c.height)
-  g.textAlign = 'center'
-  g.textBaseline = 'middle'
-  const totalH = SCREEN_LINES.reduce((a, l) => a + l.s + l.gap, 0)
-  let y = (c.height - totalH) / 2 + 10
-  for (const l of SCREEN_LINES) {
-    y += l.s / 2
-    g.font = `${l.b ? '700' : '500'} ${l.s * 1.55}px "Courier New", ui-monospace, monospace`
-    g.fillStyle = l.c
-    g.fillText(l.t, c.width / 2, y)
-    y += l.s / 2 + l.gap
-  }
   const tex = new CanvasTexture(c)
   tex.colorSpace = SRGBColorSpace
   tex.minFilter = LinearFilter
   tex.magFilter = LinearFilter
   tex.generateMipmaps = false
   tex.wrapS = tex.wrapT = ClampToEdgeWrapping
-  return tex
+
+  const draw = (lines: ScreenLine[]) => {
+    g.clearRect(0, 0, c.width, c.height)
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    const totalH = lines.reduce((a, l) => a + l.s + l.gap, 0)
+    let y = (c.height - totalH) / 2 + 10
+    for (const l of lines) {
+      y += l.s / 2
+      g.font = `${l.b ? '700' : '500'} ${l.s * 1.55}px "Courier New", ui-monospace, monospace`
+      g.fillStyle = l.c
+      g.fillText(l.t, c.width / 2, y)
+      y += l.s / 2 + l.gap
+    }
+    tex.needsUpdate = true
+  }
+  draw(SCREEN_LINES)
+  return { tex, draw }
 }
 
 const screenVert = /* glsl */ `
@@ -155,6 +171,16 @@ export interface CrtHandle {
   setEnter: (v: number) => void
   dispose: () => void
   onReady: (cb: () => void) => void
+  /** replace the copy on the tube (SIGNAL LOST, SYSTEM ONLINE, …) */
+  setScreenText: (lines: ScreenLine[]) => void
+  /** camera rig — used by the ?cam=1 keyframe editor and the ENTER flight */
+  getCam: () => CamState
+  setCam: (c: CamState) => void
+  /** back to the automatic framing that fits the set into its CSS box */
+  clearCam: () => void
+  /** fly the camera through the keys; `t` is ms from the start of the path */
+  playPath: (keys: CamKey[], onDone?: () => void) => void
+  stopPath: () => void
 }
 
 export function createCrtScene (container: HTMLElement): CrtHandle {
@@ -186,8 +212,9 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   const screenGlow = new PointLight(0x74a0ff, 2.0, 4, 2)
   scene.add(screenGlow)
 
+  const screen = makeScreenTexture()
   const screenMat = new ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uEnter: { value: 0 }, uText: { value: makeTextTexture() } },
+    uniforms: { uTime: { value: 0 }, uEnter: { value: 0 }, uText: { value: screen.tex } },
     vertexShader: screenVert,
     fragmentShader: screenFrag,
     toneMapped: false,
@@ -215,21 +242,74 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     }
   }
 
+  // When set, the camera is being driven by hand (the keyframe editor) or by
+  // the ENTER flight, and the automatic framing stands down.
+  let manual: CamState | null = null
+
+  const applyManual = (c: CamState) => {
+    camera.fov = c.fov
+    camera.position.set(c.px, c.py, c.pz)
+    camera.lookAt(c.tx, c.ty, c.tz)
+    camera.updateProjectionMatrix()
+  }
+
   const fitCamera = () => {
     const w = container.clientWidth
     const h = container.clientHeight
     if (!w || !h) return
     camera.aspect = w / h
-    const halfV = (FOV * Math.PI) / 360
-    const distH = (projected.h * MARGIN) / 2 / Math.tan(halfV)
-    const distW = (projected.w * MARGIN) / 2 / (Math.tan(halfV) * camera.aspect)
-    camera.position.set(0, CAM_Y, Math.max(distH, distW) * PUSH)
-    camera.lookAt(0, 0, 0)
-    camera.updateProjectionMatrix()
+    if (manual) {
+      applyManual(manual)
+    } else {
+      camera.fov = FOV
+      const halfV = (FOV * Math.PI) / 360
+      const distH = (projected.h * MARGIN) / 2 / Math.tan(halfV)
+      const distW = (projected.w * MARGIN) / 2 / (Math.tan(halfV) * camera.aspect)
+      camera.position.set(0, CAM_Y, Math.max(distH, distW) * PUSH)
+      camera.lookAt(0, 0, 0)
+      camera.updateProjectionMatrix()
+    }
     // updateStyle=false: the element's size is CSS's job, we only own the buffer
     renderer.setSize(w, h, false)
   }
   fitCamera()
+
+  /* ---- keyframe path player ------------------------------------------
+     Keys hold absolute times in ms. Each segment is eased in and out on its
+     own, so a hold (two keys with the same pose) reads as a deliberate beat
+     rather than a stall. */
+  let path: CamKey[] | null = null
+  let pathT0 = 0
+  let pathDone: (() => void) | null = null
+  const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
+  const lerp = (a: number, b: number, k: number) => a + (b - a) * k
+
+  const stepPath = (now: number) => {
+    if (!path || path.length === 0) return
+    const t = now - pathT0
+    const last = path[path.length - 1]
+    if (t >= last.t) {
+      manual = { ...last.cam }
+      applyManual(manual)
+      path = null
+      const cb = pathDone
+      pathDone = null
+      cb?.()
+      return
+    }
+    let i = 0
+    while (i < path.length - 1 && path[i + 1].t <= t) i++
+    const a = path[i]
+    const b = path[Math.min(i + 1, path.length - 1)]
+    const span = Math.max(1, b.t - a.t)
+    const k = ease(Math.min(1, Math.max(0, (t - a.t) / span)))
+    manual = {
+      px: lerp(a.cam.px, b.cam.px, k), py: lerp(a.cam.py, b.cam.py, k), pz: lerp(a.cam.pz, b.cam.pz, k),
+      tx: lerp(a.cam.tx, b.cam.tx, k), ty: lerp(a.cam.ty, b.cam.ty, k), tz: lerp(a.cam.tz, b.cam.tz, k),
+      fov: lerp(a.cam.fov, b.cam.fov, k),
+    }
+    applyManual(manual)
+  }
 
   // The canvas box is sized by CSS custom properties, which can change without
   // any window resize (a media query, a container query, a font swap). Watching
@@ -294,7 +374,9 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   const tick = () => {
     if (disposed) return
     raf = requestAnimationFrame(tick)
-    const t = performance.now() * 0.001
+    const now = performance.now()
+    if (path) stepPath(now)
+    const t = now * 0.001
     screenMat.uniforms.uTime.value = t
     screenGlow.intensity = 2.2 + Math.sin(t * 19.0) * 0.25 + screenMat.uniforms.uEnter.value * 4.0
     renderer.render(scene, camera)
@@ -307,6 +389,23 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   return {
     setEnter: (v: number) => { screenMat.uniforms.uEnter.value = v },
     onReady: (cb) => { if (ready) cb(); else readyCbs.push(cb) },
+    setScreenText: (lines: ScreenLine[]) => screen.draw(lines),
+    getCam: () => ({
+      px: +camera.position.x.toFixed(3),
+      py: +camera.position.y.toFixed(3),
+      pz: +camera.position.z.toFixed(3),
+      tx: manual?.tx ?? 0, ty: manual?.ty ?? 0, tz: manual?.tz ?? 0,
+      fov: camera.fov,
+    }),
+    setCam: (c: CamState) => { path = null; manual = { ...c }; applyManual(manual) },
+    clearCam: () => { path = null; manual = null; fitCamera() },
+    playPath: (keys: CamKey[], onDone?: () => void) => {
+      if (!keys.length) return
+      path = [...keys].sort((a, b) => a.t - b.t)
+      pathT0 = performance.now()
+      pathDone = onDone ?? null
+    },
+    stopPath: () => { path = null; pathDone = null },
     dispose: () => {
       if (disposed) return // idempotent — called at reveal and again at cleanup
       disposed = true
