@@ -17,6 +17,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   root.className = 'intro-root'
   root.innerHTML = `
     <div class="intro-stage">
+      <div class="intro-desk"><div class="intro-desk-sheen"></div></div>
       <div class="intro-set">
         <div class="intro-shadow"></div>
         <div class="intro-halo"></div>
@@ -59,10 +60,27 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   // Fade the set in only once the tube is actually on, so it never pops.
   crt.onReady(() => root.classList.add('crt-ready'))
 
+  // Dev-only framing panel. Dynamically imported so it never reaches the
+  // production bundle unless someone actually asks for ?tune=1.
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('desk') === '0') root.classList.add('no-desk')
+  if (params.get('tune') === '1') {
+    import('./tune').then((m) =>
+      m.mountTuner({
+        root,
+        stage: root.querySelector('.intro-stage') as HTMLElement,
+        crt,
+      }),
+    )
+  }
+
   // --- keyboard ---
   let entering = false
   const onKey = (e: KeyboardEvent) => {
     if (entering) return
+    // don't steal arrows/enter from the tuner's sliders
+    const t = e.target as HTMLElement | null
+    if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { sel = (sel + 1) % MENU.length; paint(); e.preventDefault() }
     else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { sel = (sel - 1 + MENU.length) % MENU.length; paint(); e.preventDefault() }
     else if (e.key === 'Enter' || e.key === ' ') { activate(); e.preventDefault() }

@@ -34,6 +34,63 @@
   --crt-top: 40%;
   --crt-w: 35%;
   --crt-h: 50%;
+  /* the desk the set stands on */
+  --desk-top: 72%;
+  --desk-h: 34%;
+}
+
+/* ------------------------------------------------------------------ *
+ * Desk. The plate has no table in it, so this builds one in front of
+ * the room: a near-black surface with a lit front lip, a wood sheen,
+ * and the tube's reflection pooled on top. All gradients — no blur
+ * filters, which is what made the desktop lag last time.
+ * ------------------------------------------------------------------ */
+.intro-desk {
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: var(--desk-top);
+  height: var(--desk-h);
+  z-index: 2;
+  pointer-events: none;
+  background:
+    /* grain */
+    repeating-linear-gradient(
+      92deg,
+      rgba(255, 255, 255, 0.012) 0px,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    /* surface receding into the dark */
+    linear-gradient(
+      180deg,
+      rgba(30, 20, 30, 0.97) 0%,
+      rgba(16, 11, 18, 0.99) 16%,
+      rgba(8, 5, 10, 1) 52%,
+      rgba(4, 3, 6, 1) 100%
+    );
+  /* Let the surface emerge out of the darkness. A hard top edge reads as a
+     shelf floating in mid-room rather than a table receding under the set. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 13%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 13%);
+}
+.intro-root.no-desk .intro-desk { display: none; }
+
+/* the tube's reflection lying on the wood */
+.intro-desk-sheen {
+  position: absolute;
+  left: calc(var(--crt-left) - 12%);
+  width: calc(var(--crt-w) + 24%);
+  top: 0;
+  height: 62%;
+  background: linear-gradient(
+    180deg,
+    rgba(120, 165, 255, 0.13) 0%,
+    rgba(105, 140, 255, 0.055) 28%,
+    transparent 74%
+  );
+  mix-blend-mode: screen;
 }
 
 @media (max-width: 900px) {

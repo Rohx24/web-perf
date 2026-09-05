@@ -155,6 +155,11 @@ export interface CrtHandle {
   setEnter: (v: number) => void
   dispose: () => void
   onReady: (cb: () => void) => void
+  /** live orientation, for the ?tune=1 panel */
+  setYaw: (rad: number) => void
+  setPitch: (rad: number) => void
+  getYaw: () => number
+  getPitch: () => number
 }
 
 export function createCrtScene (container: HTMLElement): CrtHandle {
@@ -202,7 +207,17 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   const readyCbs: (() => void)[] = []
   let disposed = false
   let ready = false
-  let projected = { w: 1.14, h: 1 } // model extents after normalising, filled on load
+  let yaw = YAW
+  let norm = new Vector3(1.04, 1, 0.86) // model extents after normalising, filled on load
+  let projected = { w: 1.14, h: 1 }
+
+  /** Silhouette width at the current yaw, so framing keeps the whole box in. */
+  const reproject = () => {
+    projected = {
+      w: norm.x * Math.abs(Math.cos(yaw)) + norm.z * Math.abs(Math.sin(yaw)),
+      h: norm.y,
+    }
+  }
 
   const fitCamera = () => {
     const w = container.clientWidth
@@ -236,12 +251,8 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     root.position.sub(post.getCenter(new Vector3()))
     root.updateMatrixWorld(true)
 
-    const norm = new Box3().setFromObject(root).getSize(new Vector3())
-    // Silhouette width once yawed, so fitCamera can keep the whole box in frame.
-    projected = {
-      w: norm.x * Math.abs(Math.cos(YAW)) + norm.z * Math.abs(Math.sin(YAW)),
-      h: norm.y,
-    }
+    norm = new Box3().setFromObject(root).getSize(new Vector3())
+    reproject()
 
     let screenPos = new Vector3(0, 0, 0.4)
     root.traverse((o) => {
@@ -292,6 +303,15 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   return {
     setEnter: (v: number) => { screenMat.uniforms.uEnter.value = v },
     onReady: (cb) => { if (ready) cb(); else readyCbs.push(cb) },
+    setYaw: (rad: number) => {
+      yaw = rad
+      pivot.rotation.y = SCREEN_FACES + rad
+      reproject()
+      fitCamera() // a wider silhouette needs the camera pulled back
+    },
+    setPitch: (rad: number) => { pivot.rotation.x = rad },
+    getYaw: () => yaw,
+    getPitch: () => pivot.rotation.x,
     dispose: () => {
       if (disposed) return // idempotent — called at reveal and again at cleanup
       disposed = true
