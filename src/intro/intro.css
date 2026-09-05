@@ -29,11 +29,12 @@
   min-height: 100%;
   background: url('/room/room.webp') center / 100% 100% no-repeat;
 
-  /* where the tube sits on the plate */
-  --crt-left: 46.5%;
-  --crt-top: 40%;
-  --crt-w: 35%;
-  --crt-h: 50%;
+  /* Where the tube sits on the plate: standing on the desk, right of the mug
+     and left of the tape stack — the same relationship as the reference. */
+  --crt-left: 45%;
+  --crt-top: 22.5%;
+  --crt-w: 36%;
+  --crt-h: 62%;
   /* the desk the set stands on */
   --desk-top: 72%;
   --desk-h: 34%;

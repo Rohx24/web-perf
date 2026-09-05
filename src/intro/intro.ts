@@ -63,7 +63,9 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   // Dev-only framing panel. Dynamically imported so it never reaches the
   // production bundle unless someone actually asks for ?tune=1.
   const params = new URLSearchParams(window.location.search)
-  if (params.get('desk') === '0') root.classList.add('no-desk')
+  // The room plate has a real desk in it now, so the CSS one stays off unless
+  // explicitly asked for (?desk=1) — kept around in case the plate changes.
+  if (params.get('desk') !== '1') root.classList.add('no-desk')
   if (params.get('tune') === '1') {
     import('./tune').then((m) =>
       m.mountTuner({
