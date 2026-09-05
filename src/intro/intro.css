@@ -3,6 +3,48 @@
   --purple: #a06bff;
   --blue: #7fa4ff;
   --lav: #e6dcff;
+
+  /* ================= COLOUR GRADE =================
+     Everything a colourist would reach for, in one block. Edit these numbers.
+
+     --- tone (applied to the room photo only) ---
+     g-exposure   overall light.  1 = untouched. 0.9 = a stop down, 1.1 = up.
+     g-contrast   S-curve steepness. >1 crushes blacks and lifts whites.
+     g-saturation colour intensity. 0 = greyscale, 1 = as shot, 1.3 = punchy.
+     g-temp       white balance as a hue rotation. NEGATIVE = warmer/amber,
+                  POSITIVE = cooler/blue. Keep it under ±12deg or skin dies.
+
+     --- vignette (darkened corners; pulls the eye to centre frame) ---
+     v-amount     how black the corners go. 0 = off, 1 = fully crushed.
+     v-start      where the falloff begins, as % from centre. Smaller = tighter.
+     v-centre     where the vignette is centred — put it on your subject, not
+                  the middle of the frame. Ours sits on the tube.
+
+     --- split tone (the single biggest "cinematic" lever) ---
+     Colour the shadows one way and the highlights the other. Cool shadows +
+     warm highlights is the teal-and-orange look every blockbuster uses; here
+     it's violet shadows against pink highlights to match the neon.
+
+     --- film ---
+     g-lift       raises pure black to a soft grey. This is the "matte" or
+                  "faded film" look — the single most effective way to stop a
+                  dark image feeling like flat digital sludge. Keep it tiny.
+     grain        sensor/film noise. Also hides banding in dark gradients.
+     ================================================= */
+  --g-exposure: 1.02;
+  --g-contrast: 1.08;
+  --g-saturation: 1.06;
+  --g-temp: -3deg;
+
+  --v-amount: 0.66;
+  --v-start: 38%;
+  --v-centre: 58% 52%;
+
+  --tone-shadow: rgba(46, 28, 92, 0.26);
+  --tone-highlight: rgba(255, 138, 190, 0.05);
+
+  --g-lift: 0.022;
+  --grain: 0.055;
   position: fixed;
   inset: 0;
   z-index: 400;
@@ -27,7 +69,6 @@
   height: 56.25vw; /* 16:9 */
   min-width: 177.78vh;
   min-height: 100%;
-  background: url('/room/room.webp') center / 100% 100% no-repeat;
 
   /* Where the tube sits on the plate: standing on the desk, right of the mug
      and left of the tape stack — the same relationship as the reference.
@@ -102,8 +143,22 @@
   mix-blend-mode: screen;
 }
 
+/* The room photograph, on its own layer so the colour grade can be applied to
+   the photo alone. Filtering .intro-stage would drag the live WebGL canvas and
+   the type through the filter too — a per-frame cost for a static effect. */
+.intro-plate {
+  position: absolute;
+  inset: 0;
+  background: url('/room/room.webp') center / 100% 100% no-repeat;
+  filter:
+    brightness(var(--g-exposure))
+    contrast(var(--g-contrast))
+    saturate(var(--g-saturation))
+    hue-rotate(var(--g-temp));
+}
+
 @media (max-width: 900px) {
-  .intro-stage { background-image: url('/room/room-sm.webp'); }
+  .intro-plate { background-image: url('/room/room-sm.webp'); }
 }
 
 /* The whole television — canvas plus its shadow and light spill — as one box.
@@ -208,16 +263,60 @@
   transform: rotate(var(--n2-r));
 }
 
-/* colour grade + haze + vignette pulling the whole frame together */
+/* Split tone, vignette, black lift and grain, over the whole frame.
+   Deliberately all normal-blended gradients: mix-blend-mode or backdrop-filter
+   on a full-screen layer forces the compositor to re-blend over the live canvas
+   every frame, which is what made the desktop stutter last time. */
 .intro-grade {
   position: absolute;
   inset: 0;
   z-index: 6;
   pointer-events: none;
   background:
-    radial-gradient(80% 70% at 12% 26%, rgba(255, 120, 180, 0.07), transparent 60%),
-    radial-gradient(90% 80% at 62% 62%, rgba(90, 120, 255, 0.07), transparent 65%),
-    radial-gradient(120% 100% at 50% 50%, transparent 42%, rgba(4, 2, 8, 0.72) 100%);
+    /* black lift — flattens pure black into soft grey (matte film) */
+    linear-gradient(rgba(150, 140, 190, var(--g-lift)), rgba(150, 140, 190, var(--g-lift))),
+    /* highlight tone — warm, where the lamp and tube are */
+    radial-gradient(70% 60% at 20% 28%, var(--tone-highlight), transparent 62%),
+    /* shadow tone — cool violet into the corners and depths */
+    radial-gradient(105% 95% at var(--v-centre), transparent 30%, var(--tone-shadow) 100%),
+    /* vignette */
+    radial-gradient(
+      120% 105% at var(--v-centre),
+      transparent var(--v-start),
+      rgba(4, 2, 8, var(--v-amount)) 100%
+    );
+}
+
+/* Film grain. One small tiled SVG, rasterised once and reused — no filter and
+   no animation, so it costs a single texture upload. Doubles as the cheapest
+   fix for WebP banding in the dark gradients. */
+.intro-grade::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: var(--grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* ---- alternate looks: ?look=warm / ?look=cool / ?look=matte ---- */
+.intro-root.look-warm {
+  --g-temp: -9deg;
+  --g-saturation: 1.12;
+  --tone-shadow: rgba(70, 30, 60, 0.24);
+  --tone-highlight: rgba(255, 170, 120, 0.08);
+}
+.intro-root.look-cool {
+  --g-temp: 7deg;
+  --g-contrast: 1.12;
+  --tone-shadow: rgba(24, 40, 110, 0.30);
+  --tone-highlight: rgba(150, 200, 255, 0.06);
+}
+.intro-root.look-matte {
+  --g-contrast: 0.94;
+  --g-saturation: 0.92;
+  --g-lift: 0.055;
+  --v-amount: 0.5;
+  --grain: 0.09;
 }
 
 /* ---- left column: title + menu ---- */

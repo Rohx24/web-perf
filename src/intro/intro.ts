@@ -17,6 +17,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   root.className = 'intro-root'
   root.innerHTML = `
     <div class="intro-stage">
+      <div class="intro-plate"></div>
       <div class="intro-desk"><div class="intro-desk-sheen"></div></div>
       <div class="intro-set">
         <div class="intro-shadow"></div>
@@ -60,21 +61,13 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   // Fade the set in only once the tube is actually on, so it never pops.
   crt.onReady(() => root.classList.add('crt-ready'))
 
-  // Dev-only framing panel. Dynamically imported so it never reaches the
-  // production bundle unless someone actually asks for ?tune=1.
   const params = new URLSearchParams(window.location.search)
   // The room plate has a real desk in it now, so the CSS one stays off unless
   // explicitly asked for (?desk=1) — kept around in case the plate changes.
   if (params.get('desk') !== '1') root.classList.add('no-desk')
-  if (params.get('tune') === '1') {
-    import('./tune').then((m) =>
-      m.mountTuner({
-        root,
-        stage: root.querySelector('.intro-stage') as HTMLElement,
-        crt,
-      }),
-    )
-  }
+  // ?look=warm|cool|matte swaps the colour grade; default is the baked one.
+  const look = params.get('look')
+  if (look && /^[a-z]+$/.test(look)) root.classList.add(`look-${look}`)
 
   // --- keyboard ---
   let entering = false
