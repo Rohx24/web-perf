@@ -69,6 +69,11 @@
   height: 56.25vw; /* 16:9 */
   min-width: 177.78vh;
   min-height: 100%;
+  /* Tracking error: the whole picture jumps sideways for a few frames every
+     14s. Animating `translate` rather than `transform` leaves the centring
+     transform above untouched. Rare and brief on purpose — a glitch you can
+     predict stops reading as a glitch. */
+  animation: tracking 14s steps(1, end) infinite;
 
   /* Where the tube sits on the plate: standing on the desk, right of the mug
      and left of the tape stack — the same relationship as the reference.
@@ -80,6 +85,11 @@
   /* the desk the set stands on (only drawn with ?desk=1) */
   --desk-top: 30%;
   --desk-h: 62%;
+  /* practical lights in the photo, so the animated glows sit on top of them */
+  --lamp-x: 5%;
+  --lamp-y: 24%;
+  --win-x: 25%;
+  --win-y: 33%;
   /* each sticky note, placed independently on the plate */
   --n1-x: 71.5%;
   --n1-y: 42%;
@@ -155,10 +165,36 @@
     contrast(var(--g-contrast))
     saturate(var(--g-saturation))
     hue-rotate(var(--g-temp));
+  /* The room is locked. It carried a slow pan and a pointer parallax, but the
+     set and the notes are positioned against this plate — anything that moves
+     the photograph slides the television across the desk it is standing on.
+     The scene stays still; only light, dust and the broadcast move. */
+}
+
+@keyframes tracking {
+  0%, 95.6%, 100% { translate: 0 0; }
+  96.0% { translate: -0.35% 0; }
+  96.5% { translate: 0.28% -0.1%; }
+  97.0% { translate: -0.15% 0; }
+  97.4% { translate: 0 0; }
 }
 
 @media (max-width: 900px) {
   .intro-plate { background-image: url('/room/room-sm.webp'); }
+}
+
+/* Honour the OS setting: hold the frame, keep the grade. */
+@media (prefers-reduced-motion: reduce) {
+  .intro-stage,
+  .intro-plate,
+  .intro-lamp,
+  .intro-win,
+  .intro-motes i,
+  .intro-roll,
+  .intro-scan,
+  .intro-grade::after,
+  .intro-halo { animation: none; }
+  .intro-roll { opacity: 0; }
 }
 
 /* The whole television — canvas plus its shadow and light spill — as one box.
@@ -171,6 +207,87 @@
   width: var(--crt-w);
   height: var(--crt-h);
   z-index: 3;
+}
+
+/* ------------------------------------------------------------------ *
+ * Atmosphere. Everything below animates transform or opacity only, so
+ * it lives on the compositor and never repaints the room underneath.
+ * ------------------------------------------------------------------ */
+
+/* the desk lamp, breathing and occasionally guttering */
+.intro-lamp {
+  position: absolute;
+  left: var(--lamp-x);
+  top: var(--lamp-y);
+  width: 26%;
+  height: 34%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    42% 42% at 50% 50%,
+    rgba(255, 150, 190, 0.20),
+    rgba(255, 110, 170, 0.07) 44%,
+    transparent 72%
+  );
+  animation: lampFlicker 7s ease-in-out infinite;
+}
+@keyframes lampFlicker {
+  0%, 100% { opacity: 0.9; }
+  26% { opacity: 1; }
+  40% { opacity: 0.72; }
+  42% { opacity: 0.97; }
+  63% { opacity: 0.85; }
+  78% { opacity: 1; }
+}
+
+/* the city through the window, shifting the way distant lights do */
+.intro-win {
+  position: absolute;
+  left: var(--win-x);
+  top: var(--win-y);
+  width: 26%;
+  height: 46%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(120, 170, 255, 0.15),
+    rgba(150, 110, 255, 0.06) 50%,
+    transparent 76%
+  );
+  animation: cityShift 11s ease-in-out infinite;
+}
+/* opacity only — scaling this would re-rasterise the gradient every frame for
+   a change nobody can see */
+@keyframes cityShift {
+  0%, 100% { opacity: 0.7; }
+  33% { opacity: 1; }
+  68% { opacity: 0.82; }
+}
+
+/* dust drifting through the light */
+.intro-motes {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.intro-motes i {
+  position: absolute;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  background: rgba(226, 214, 255, 0.9);
+  box-shadow: 0 0 3px rgba(200, 190, 255, 0.6);
+  animation: mote var(--d) linear infinite;
+  animation-delay: var(--delay);
+  will-change: transform;
+}
+@keyframes mote {
+  from { transform: translate3d(0, 22vh, 0); }
+  to { transform: translate3d(calc(var(--drift) * 7vw), -30vh, 0); }
 }
 
 /* the three.js canvas — a small box over the plate, not a full-screen layer.
@@ -293,9 +410,50 @@
 .intro-grade::after {
   content: '';
   position: absolute;
-  inset: 0;
+  /* oversized so it can be jittered by transform without exposing an edge */
+  inset: -12%;
   opacity: var(--grain);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  /* Real grain reshuffles every frame. Jumping the tile in steps fakes that
+     at 8fps, which is the rate hand-drawn animation uses for the same reason —
+     and it is a transform, so the noise never actually repaints. */
+  animation: grainShift 0.9s steps(8, end) infinite;
+  will-change: transform;
+}
+@keyframes grainShift {
+  0% { transform: translate3d(0, 0, 0); }
+  12.5% { transform: translate3d(-2%, 1.5%, 0); }
+  25% { transform: translate3d(1.6%, -2.2%, 0); }
+  37.5% { transform: translate3d(-1.2%, -1.4%, 0); }
+  50% { transform: translate3d(2.1%, 1.1%, 0); }
+  62.5% { transform: translate3d(-2.4%, 2%, 0); }
+  75% { transform: translate3d(1.1%, -1.7%, 0); }
+  87.5% { transform: translate3d(-1.7%, 0.9%, 0); }
+}
+
+/* The slow bright band that crawls up a mistuned CRT. This one effect does
+   more than anything else to say "you are watching this on a television". */
+.intro-roll {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 26%;
+  z-index: 7;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(150, 180, 255, 0.035) 38%,
+    rgba(225, 235, 255, 0.055) 50%,
+    rgba(150, 180, 255, 0.035) 62%,
+    transparent 100%
+  );
+  animation: rollBar 8.5s linear infinite;
+  will-change: transform;
+}
+@keyframes rollBar {
+  from { transform: translate3d(0, -30%, 0); }
+  to { transform: translate3d(0, 420%, 0); }
 }
 
 /* ---- alternate looks: ?look=warm / ?look=cool / ?look=matte ---- */
@@ -433,10 +591,10 @@
 .intro-corner.br { bottom: 2.4vh; right: 2vw; text-align: right; }
 .intro-corner .hi { color: var(--blue); }
 
-/* global scanline + grain */
+/* global scanlines, creeping the way an unsynced field does */
 .intro-scan {
   position: absolute;
-  inset: 0;
+  inset: -2%;
   z-index: 8;
   pointer-events: none;
   opacity: 0.55;
@@ -446,6 +604,12 @@
     rgba(0, 0, 0, 0) 2px,
     rgba(0, 0, 0, 0.20) 3px
   );
+  animation: scanCreep 2.4s linear infinite;
+  will-change: transform;
+}
+@keyframes scanCreep {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 3px, 0); } /* exactly one band → seamless */
 }
 
 /* ENTER transition overlay */

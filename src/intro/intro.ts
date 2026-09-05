@@ -18,6 +18,9 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   root.innerHTML = `
     <div class="intro-stage">
       <div class="intro-plate"></div>
+      <div class="intro-lamp"></div>
+      <div class="intro-win"></div>
+      <div class="intro-motes"></div>
       <div class="intro-desk"><div class="intro-desk-sheen"></div></div>
       <div class="intro-set">
         <div class="intro-shadow"></div>
@@ -29,6 +32,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
       <div class="intro-note n2">BUILD<br>EXPLORE<br>REPEAT</div>
     </div>
     <div class="intro-grade"></div>
+    <div class="intro-roll"></div>
     <div class="intro-corner tl">RD · 2026<br>BENGALURU, IN</div>
     <div class="intro-corner tr">CH 06<br>SIGNAL: <span class="hi">FOUND</span><br>USER: ROHIT<br>STATUS: BUILDING</div>
     <div class="intro-corner bl">SAME BRAIN<br>DIFFERENT DAY</div>
@@ -68,6 +72,23 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   // ?look=warm|cool|matte swaps the colour grade; default is the baked one.
   const look = params.get('look')
   if (look && /^[a-z]+$/.test(look)) root.classList.add(`look-${look}`)
+
+  // --- dust drifting through the lamp light ---
+  const motes = root.querySelector('.intro-motes') as HTMLElement
+  for (let i = 0; i < 14; i++) {
+    const m = document.createElement('i')
+    // spread across the lit left/centre of the room, where dust would catch
+    m.style.cssText =
+      `left:${6 + Math.random() * 62}%;` +
+      `top:${10 + Math.random() * 70}%;` +
+      `--s:${(0.6 + Math.random() * 1.6).toFixed(2)}px;` +
+      `--d:${(26 + Math.random() * 34).toFixed(1)}s;` +
+      `--delay:${(-Math.random() * 40).toFixed(1)}s;` +
+      `--drift:${(Math.random() * 2 - 1).toFixed(2)};` +
+      `opacity:${(0.10 + Math.random() * 0.30).toFixed(2)}`
+    motes.appendChild(m)
+  }
+
 
   // --- keyboard ---
   let entering = false
