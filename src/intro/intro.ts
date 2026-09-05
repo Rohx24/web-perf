@@ -36,7 +36,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     <div class="intro-corner tl">RD · 2026<br>BENGALURU, IN</div>
     <div class="intro-corner tr">CH 06<br>SIGNAL: <span class="hi">FOUND</span><br>USER: ROHIT<br>STATUS: BUILDING</div>
     <div class="intro-corner bl">SAME BRAIN<br>DIFFERENT DAY</div>
-    <div class="intro-corner br">RUNNING ON<br>TOO MUCH COFFEE</div>
+    <div class="intro-corner br">RUNNING ON<br>TOO MUCH CHAI</div>
     <div class="intro-left">
       <div class="intro-title"><span class="r">Rohit</span><span class="d" data-t="DIGGI">DIGGI</span></div>
       <div class="intro-menu"></div>
