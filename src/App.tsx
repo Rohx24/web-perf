@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Preload } from '@react-three/drei'
 import { QUALITY, IS_MOBILE } from './perf/quality'
+import { AdaptiveQuality } from './perf/AdaptiveQuality'
 import { StatsProbe } from './perf/Stats'
 import { GridLayer } from './scene/GridLayer'
 import { MarkerLayer } from './scene/MarkerLayer'
@@ -32,6 +33,11 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
+  // Live render resolution. Starts at the device's tier ceiling, then
+  // AdaptiveQuality raises/lowers it from the *measured* frame rate — so any
+  // laptop self-tunes to a smooth framerate instead of relying on a guess.
+  const [dpr, setDpr] = useState(QUALITY.dprMax)
+
   return (
     <>
     <Canvas
@@ -44,11 +50,9 @@ export default function App() {
       flat
       // Pause the loop when the tab is backgrounded (see above).
       frameloop={frameloop}
-      // Render at the display's own pixel density so the grid lines stay
-      // hairline-sharp on high-DPR screens. Capped at QUALITY.dprMax — 2 on the
-      // default (high) tier, i.e. exactly the original; lower only when a
-      // ?tier=/?dpr= test override asks for it.
-      dpr={[1, QUALITY.dprMax]}
+      // Live, adaptive pixel density (see AdaptiveQuality). Starts at the tier
+      // ceiling and is scaled to hit a smooth framerate on the actual device.
+      dpr={dpr}
       camera={{
         fov: VIEWER.fov,
         near: VIEWER.near,
@@ -57,6 +61,9 @@ export default function App() {
       }}
     >
       <Viewer />
+      {/* Measures real FPS and scales DPR + transmission to keep it smooth on
+          any device. The universal fix for "laggy on some laptop". */}
+      <AdaptiveQuality setDpr={setDpr} />
       {/* Drives the camera down the corridor from scroll. Owns the camera at
           progress > 0; at 0 it reproduces the Viewer pose exactly. */}
       <ScrollController />
