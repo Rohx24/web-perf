@@ -30,18 +30,19 @@
   background: url('/room/room.webp') center / 100% 100% no-repeat;
 
   /* Where the tube sits on the plate: standing on the desk, right of the mug
-     and left of the tape stack — the same relationship as the reference. */
-  --crt-left: 45%;
-  --crt-top: 22.5%;
-  --crt-w: 36%;
-  --crt-h: 62%;
-  /* the desk the set stands on */
-  --desk-top: 72%;
-  --desk-h: 34%;
+     and left of the tape stack — the same relationship as the reference.
+     Framed with ?tune=1. */
+  --crt-left: 50%;
+  --crt-top: 34.5%;
+  --crt-w: 31%;
+  --crt-h: 62.5%;
+  /* the desk the set stands on (only drawn with ?desk=1) */
+  --desk-top: 30%;
+  --desk-h: 62%;
   /* each sticky note, placed independently on the plate */
-  --n1-x: 74%;
-  --n1-y: 18%;
-  --n1-r: 4.5deg;
+  --n1-x: 71.5%;
+  --n1-y: 42%;
+  --n1-r: 16deg;
   --n2-x: 82%;
   --n2-y: 52%;
   --n2-r: -5deg;

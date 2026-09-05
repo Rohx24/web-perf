@@ -38,11 +38,11 @@ const num = (k: string, d: number) => {
   return v === null || v === undefined || v === '' ? d : Number(v)
 }
 
-/** Tunables — overridable via query string while dialling in the shot. */
-const YAW = num('yaw', 0.17) // ~10°: shows a sliver of the left casing
-const FOV = num('fov', 26) // long-ish lens, keeps the box from splaying
-const CAM_Y = num('camy', 0.16) // camera a touch above centre → slight look-down
-const MARGIN = num('margin', 1.1) // padding around the model inside the canvas
+/** Tunables — framed with ?tune=1, overridable via query string. */
+const YAW = num('yaw', -0.384) // -22°: three-quarter, showing the right casing
+const FOV = num('fov', 30) // lens; longer keeps the box from splaying
+const CAM_Y = num('camy', 0.15) // camera a touch above centre → slight look-down
+const MARGIN = num('margin', 1.099) // padding around the model (Size 0.91)
 const DEBUG = qs?.get('crtdebug') === '1'
 
 // The CRT screen copy.
@@ -229,7 +229,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
 
   // live framing state (all driveable from the ?tune=1 panel)
   let margin = MARGIN
-  let push = num('push', 1) // camera distance multiplier — dollies the set back
+  let push = num('push', 1.05) // camera distance multiplier — dollies the set back
   let camY = CAM_Y
   let fov = FOV
 
