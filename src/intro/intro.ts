@@ -16,17 +16,23 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   const root = document.createElement('div')
   root.className = 'intro-root'
   root.innerHTML = `
-    <div class="intro-blinds"></div>
-    <div class="intro-desk"></div>
-    <div class="intro-crt"></div>
+    <div class="intro-stage">
+      <div class="intro-set">
+        <div class="intro-shadow"></div>
+        <div class="intro-halo"></div>
+        <div class="intro-crt"></div>
+        <div class="intro-spill"></div>
+      </div>
+      <div class="intro-note n1">GOOD IDEAS<br>LATE NIGHTS</div>
+      <div class="intro-note n2">BUILD<br>EXPLORE<br>REPEAT</div>
+    </div>
+    <div class="intro-grade"></div>
     <div class="intro-corner tl">RD · 2026<br>BENGALURU, IN</div>
     <div class="intro-corner tr">CH 06<br>SIGNAL: <span class="hi">FOUND</span><br>USER: ROHIT<br>STATUS: BUILDING</div>
     <div class="intro-corner bl">SAME BRAIN<br>DIFFERENT DAY</div>
     <div class="intro-corner br">RUNNING ON<br>TOO MUCH COFFEE</div>
-    <div class="intro-note n1">GOOD IDEAS<br>LATE NIGHTS</div>
-    <div class="intro-note n2">BUILD<br>EXPLORE<br>REPEAT</div>
     <div class="intro-left">
-      <div class="intro-title"><span class="r">Rohit</span><span class="d">DIGGI</span></div>
+      <div class="intro-title"><span class="r">Rohit</span><span class="d" data-t="DIGGI">DIGGI</span></div>
       <div class="intro-menu"></div>
     </div>
     <div class="intro-scan"></div>
@@ -50,6 +56,8 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
 
   // --- 3D CRT ---
   const crt: CrtHandle = createCrtScene(root.querySelector('.intro-crt') as HTMLElement)
+  // Fade the set in only once the tube is actually on, so it never pops.
+  crt.onReady(() => root.classList.add('crt-ready'))
 
   // --- keyboard ---
   let entering = false
@@ -82,6 +90,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     // 1–4: ramp the CRT signal breakup (static + brightness surge).
     const t0 = performance.now()
     const DUR = 1200
+    let broke = false
     const ramp = () => {
       const p = Math.min(1, (performance.now() - t0) / DUR)
       crt.setEnter(p)
@@ -90,8 +99,15 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
       else afterBreakup()
     }
     requestAnimationFrame(ramp)
+    // rAF is suspended entirely while the tab is hidden. Without this, a
+    // visitor who switches away mid-transition comes back to a frozen title
+    // screen that never hands off to the site. Timers still fire (throttled),
+    // so this guarantees the handoff completes either way.
+    window.setTimeout(() => { crt.setEnter(1); afterBreakup() }, DUR + 400)
 
     function afterBreakup () {
+      if (broke) return
+      broke = true
       // 5–7: whiteout of static → fade to black.
       fade.classList.add('on')
       window.setTimeout(() => {
