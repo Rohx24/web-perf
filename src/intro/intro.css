@@ -38,6 +38,13 @@
   /* the desk the set stands on */
   --desk-top: 72%;
   --desk-h: 34%;
+  /* each sticky note, placed independently on the plate */
+  --n1-x: 74%;
+  --n1-y: 18%;
+  --n1-r: 4.5deg;
+  --n2-x: 82%;
+  --n2-y: 52%;
+  --n2-r: -5deg;
 }
 
 /* ------------------------------------------------------------------ *
@@ -174,7 +181,9 @@
   53% { opacity: 0.95; }
 }
 
-/* sticky notes taped up beside the set */
+/* Sticky notes. Each one is placed on its own — they used to be pinned to the
+   CRT's coordinates, which dragged them around whenever the set was reframed
+   and made them read as one attached group. */
 .intro-note {
   position: absolute;
   z-index: 5;
@@ -185,20 +194,17 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.7);
-  opacity: 0.86;
   pointer-events: none;
 }
-/* taped to the top-right corner of the set, half on the bezel */
 .intro-note.n1 {
-  left: calc(var(--crt-left) + var(--crt-w) - 7%);
-  top: calc(var(--crt-top) - 4%);
-  transform: rotate(4.5deg);
+  left: var(--n1-x);
+  top: var(--n1-y);
+  transform: rotate(var(--n1-r));
 }
-/* stuck on the shelf beside it */
 .intro-note.n2 {
-  left: calc(var(--crt-left) + var(--crt-w) + 1.5%);
-  top: calc(var(--crt-top) + var(--crt-h) * 0.5);
-  transform: rotate(-5deg);
+  left: var(--n2-x);
+  top: var(--n2-y);
+  transform: rotate(var(--n2-r));
 }
 
 /* colour grade + haze + vignette pulling the whole frame together */

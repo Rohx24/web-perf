@@ -155,11 +155,19 @@ export interface CrtHandle {
   setEnter: (v: number) => void
   dispose: () => void
   onReady: (cb: () => void) => void
-  /** live orientation, for the ?tune=1 panel */
+  /** live framing, for the ?tune=1 panel */
   setYaw: (rad: number) => void
   setPitch: (rad: number) => void
+  setFill: (v: number) => void
+  setPush: (v: number) => void
+  setCamY: (v: number) => void
+  setFov: (v: number) => void
   getYaw: () => number
   getPitch: () => number
+  getFill: () => number
+  getPush: () => number
+  getCamY: () => number
+  getFov: () => number
 }
 
 export function createCrtScene (container: HTMLElement): CrtHandle {
@@ -219,20 +227,35 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     }
   }
 
+  // live framing state (all driveable from the ?tune=1 panel)
+  let margin = MARGIN
+  let push = num('push', 1) // camera distance multiplier — dollies the set back
+  let camY = CAM_Y
+  let fov = FOV
+
   const fitCamera = () => {
     const w = container.clientWidth
-    const h = Math.max(1, container.clientHeight)
+    const h = container.clientHeight
+    if (!w || !h) return
+    camera.fov = fov
     camera.aspect = w / h
-    const halfV = (camera.fov * Math.PI) / 360
-    const distH = (projected.h * MARGIN) / 2 / Math.tan(halfV)
-    const distW = (projected.w * MARGIN) / 2 / (Math.tan(halfV) * camera.aspect)
-    const dist = num('dist', 0) || Math.max(distH, distW)
-    camera.position.set(0, CAM_Y, dist)
+    const halfV = (fov * Math.PI) / 360
+    const distH = (projected.h * margin) / 2 / Math.tan(halfV)
+    const distW = (projected.w * margin) / 2 / (Math.tan(halfV) * camera.aspect)
+    camera.position.set(0, camY, Math.max(distH, distW) * push)
     camera.lookAt(0, 0, 0)
     camera.updateProjectionMatrix()
-    renderer.setSize(w, h)
+    // updateStyle=false: the element's size is CSS's job, we only own the buffer
+    renderer.setSize(w, h, false)
   }
   fitCamera()
+
+  // The canvas box is sized by CSS custom properties, which can change without
+  // any window resize (the tuner, a container query, a font swap). Watching the
+  // element directly is the only way to keep the drawing buffer in step — when
+  // it drifts, CSS stretches the canvas and the model gets clipped mid-frame.
+  const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => fitCamera()) : null
+  ro?.observe(container)
 
   const loader = new GLTFLoader()
   loader.setMeshoptDecoder(MeshoptDecoder)
@@ -310,12 +333,22 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       fitCamera() // a wider silhouette needs the camera pulled back
     },
     setPitch: (rad: number) => { pivot.rotation.x = rad },
+    // fill = how much of the canvas box the set occupies (1 = snug)
+    setFill: (v: number) => { margin = 1 / Math.max(0.25, v); fitCamera() },
+    setPush: (v: number) => { push = Math.max(0.2, v); fitCamera() },
+    setCamY: (v: number) => { camY = v; fitCamera() },
+    setFov: (v: number) => { fov = v; fitCamera() },
     getYaw: () => yaw,
     getPitch: () => pivot.rotation.x,
+    getFill: () => 1 / margin,
+    getPush: () => push,
+    getCamY: () => camY,
+    getFov: () => fov,
     dispose: () => {
       if (disposed) return // idempotent — called at reveal and again at cleanup
       disposed = true
       cancelAnimationFrame(raf)
+      ro?.disconnect()
       window.removeEventListener('resize', onResize)
       renderer.dispose()
       renderer.forceContextLoss()

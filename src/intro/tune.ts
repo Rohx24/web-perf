@@ -23,13 +23,14 @@ const CSS = `
 .tune {
   position: fixed; top: 12px; right: 12px; z-index: 9999;
   width: 268px; padding: 12px 14px 10px;
+  max-height: 94vh; overflow-y: auto; overscroll-behavior: contain;
   background: rgba(10,8,16,.92); border: 1px solid rgba(160,140,220,.35);
   border-radius: 8px; color: #dfe3f4;
   font: 500 11px/1.5 ui-monospace, monospace; letter-spacing: .04em;
   box-shadow: 0 12px 40px rgba(0,0,0,.6); user-select: none;
 }
 .tune h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .18em; color: #ff8ec9; text-transform: uppercase; }
-.tune .row { display: grid; grid-template-columns: 62px 1fr 46px; gap: 7px; align-items: center; margin-bottom: 5px; }
+.tune .row { display: grid; grid-template-columns: 56px 1fr 48px; gap: 6px; align-items: center; margin-bottom: 3px; }
 .tune label { color: #9aa2c0; font-size: 10px; }
 .tune input[type=range] { width: 100%; height: 3px; accent-color: #ff5cb0; cursor: pointer; }
 .tune .val { text-align: right; font-size: 10px; color: #cfd6ee; }
@@ -60,13 +61,29 @@ export function mountTuner (opts: { root: HTMLElement; stage: HTMLElement; crt: 
     return Number.isFinite(n) ? n : fallback
   }
 
+  const r2 = (n: number) => Math.round(n * 100) / 100
+
   const ctls: Ctl[] = [
-    { key: 'left', label: 'X pos', min: 0, max: 90, step: 0.5, value: readVar('--crt-left', 46.5), cssVar: '--crt-left', unit: '%' },
-    { key: 'top', label: 'Y pos', min: 0, max: 90, step: 0.5, value: readVar('--crt-top', 40), cssVar: '--crt-top', unit: '%' },
-    { key: 'w', label: 'Width', min: 8, max: 80, step: 0.5, value: readVar('--crt-w', 35), cssVar: '--crt-w', unit: '%' },
-    { key: 'h', label: 'Height', min: 8, max: 95, step: 0.5, value: readVar('--crt-h', 50), cssVar: '--crt-h', unit: '%' },
-    { key: 'yaw', label: 'Rotate', min: -45, max: 45, step: 0.5, value: deg(crt.getYaw()), unit: '°', apply: (v) => crt.setYaw((v * Math.PI) / 180) },
-    { key: 'pitch', label: 'Tilt', min: -25, max: 25, step: 0.5, value: deg(crt.getPitch()), unit: '°', apply: (v) => crt.setPitch((v * Math.PI) / 180) },
+    // --- box on the plate ---
+    { key: 'left', label: 'X pos', min: 0, max: 90, step: 0.5, value: readVar('--crt-left', 45), cssVar: '--crt-left', unit: '%' },
+    { key: 'top', label: 'Y pos', min: -10, max: 90, step: 0.5, value: readVar('--crt-top', 22.5), cssVar: '--crt-top', unit: '%' },
+    { key: 'w', label: 'Box W', min: 8, max: 90, step: 0.5, value: readVar('--crt-w', 36), cssVar: '--crt-w', unit: '%' },
+    { key: 'h', label: 'Box H', min: 8, max: 100, step: 0.5, value: readVar('--crt-h', 62), cssVar: '--crt-h', unit: '%' },
+    // --- the set within that box ---
+    { key: 'fill', label: 'Size', min: 0.3, max: 1.6, step: 0.01, value: r2(crt.getFill()), apply: (v) => crt.setFill(v) },
+    { key: 'push', label: 'Push', min: 0.4, max: 2.5, step: 0.01, value: r2(crt.getPush()), apply: (v) => crt.setPush(v) },
+    { key: 'fov', label: 'Lens', min: 10, max: 60, step: 1, value: Math.round(crt.getFov()), unit: '°', apply: (v) => crt.setFov(v) },
+    { key: 'camy', label: 'Cam H', min: -1, max: 1, step: 0.01, value: r2(crt.getCamY()), apply: (v) => crt.setCamY(v) },
+    { key: 'yaw', label: 'Rotate', min: -60, max: 60, step: 0.5, value: deg(crt.getYaw()), unit: '°', apply: (v) => crt.setYaw((v * Math.PI) / 180) },
+    { key: 'pitch', label: 'Tilt', min: -30, max: 30, step: 0.5, value: deg(crt.getPitch()), unit: '°', apply: (v) => crt.setPitch((v * Math.PI) / 180) },
+    // --- notes, each independent ---
+    { key: 'n1x', label: 'Note1 X', min: 0, max: 100, step: 0.5, value: readVar('--n1-x', 74), cssVar: '--n1-x', unit: '%' },
+    { key: 'n1y', label: 'Note1 Y', min: 0, max: 100, step: 0.5, value: readVar('--n1-y', 18), cssVar: '--n1-y', unit: '%' },
+    { key: 'n1r', label: 'Note1 ∠', min: -25, max: 25, step: 0.5, value: readVar('--n1-r', 4.5), cssVar: '--n1-r', unit: 'deg' },
+    { key: 'n2x', label: 'Note2 X', min: 0, max: 100, step: 0.5, value: readVar('--n2-x', 82), cssVar: '--n2-x', unit: '%' },
+    { key: 'n2y', label: 'Note2 Y', min: 0, max: 100, step: 0.5, value: readVar('--n2-y', 52), cssVar: '--n2-y', unit: '%' },
+    { key: 'n2r', label: 'Note2 ∠', min: -25, max: 25, step: 0.5, value: readVar('--n2-r', -5), cssVar: '--n2-r', unit: 'deg' },
+    // --- css desk (only visible with ?desk=1) ---
     { key: 'deskTop', label: 'Desk Y', min: 30, max: 100, step: 0.5, value: readVar('--desk-top', 72), cssVar: '--desk-top', unit: '%' },
     { key: 'deskH', label: 'Desk H', min: 5, max: 70, step: 0.5, value: readVar('--desk-h', 34), cssVar: '--desk-h', unit: '%' },
   ]
@@ -89,11 +106,17 @@ export function mountTuner (opts: { root: HTMLElement; stage: HTMLElement; crt: 
       `--crt-top: ${by('top')}%;\n` +
       `--crt-w: ${by('w')}%;\n` +
       `--crt-h: ${by('h')}%;\n` +
+      `--n1-x: ${by('n1x')}%;  --n1-y: ${by('n1y')}%;  --n1-r: ${by('n1r')}deg;\n` +
+      `--n2-x: ${by('n2x')}%;  --n2-y: ${by('n2y')}%;  --n2-r: ${by('n2r')}deg;\n` +
       `--desk-top: ${by('deskTop')}%;\n` +
       `--desk-h: ${by('deskH')}%;\n\n` +
       `/* src/intro/crtScene.ts */\n` +
-      `YAW   = ${((by('yaw') * Math.PI) / 180).toFixed(3)}  // ${by('yaw')}°\n` +
-      `PITCH = ${((by('pitch') * Math.PI) / 180).toFixed(3)}  // ${by('pitch')}°`
+      `YAW    = ${((by('yaw') * Math.PI) / 180).toFixed(3)}   // ${by('yaw')}°\n` +
+      `PITCH  = ${((by('pitch') * Math.PI) / 180).toFixed(3)}   // ${by('pitch')}°\n` +
+      `MARGIN = ${(1 / by('fill')).toFixed(3)}   // Size ${by('fill')}\n` +
+      `PUSH   = ${by('push')}\n` +
+      `FOV    = ${by('fov')}\n` +
+      `CAM_Y  = ${by('camy')}`
   }
 
   const applyAll = () => {
