@@ -219,10 +219,12 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     setEnter: (v: number) => { screenMat.uniforms.uEnter.value = v },
     onReady: (cb) => { readyCbs.push(cb) },
     dispose: () => {
+      if (disposed) return // idempotent — may be called at reveal and again at cleanup
       disposed = true
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
+      renderer.forceContextLoss()
       renderer.domElement.remove()
       void clock
     },

@@ -710,7 +710,10 @@ canvas {
 }
 .rd-crt {
   position: relative;
-  width: min(820px, 92vw);
+  /* The `88vh` cap keeps the whole set (4:3 screen + chassis) shorter than the
+     viewport, so on short/wide windows it can't overflow the abyss (which is
+     parked one screen-height down at rest) and poke up into the hero. */
+  width: min(820px, 92vw, 88vh);
   padding: 30px 30px 44px;
   border-radius: 26px;
   background: linear-gradient(160deg, #2a2c31, #141518 55%, #0c0d10);

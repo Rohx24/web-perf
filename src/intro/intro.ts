@@ -103,13 +103,17 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
           i += 1
           if (i < steps.length) { signal.textContent = steps[i]; return }
           window.clearInterval(seq)
-          // Hand off to the real site (lazily mounted), then fade the intro away.
+          // Hand off to the real site (lazily mounted).
           opts.onEnter(target)
+          // Kill the CRT NOW, while the black "SYSTEM ONLINE" screen still covers
+          // everything — so the CRT canvas can never bleed over the portfolio
+          // during the reveal fade. Then fade the black away to show the site.
+          crt.dispose()
           window.setTimeout(() => {
-            root.style.transition = 'opacity 0.8s ease'
+            root.style.transition = 'opacity 0.9s ease'
             root.style.opacity = '0'
-            window.setTimeout(cleanup, 850)
-          }, 1000)
+            window.setTimeout(cleanup, 950)
+          }, 1200)
         }, 780)
       }, 520)
     }
