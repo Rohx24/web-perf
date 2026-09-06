@@ -126,6 +126,8 @@ const screenFrag = /* glsl */ `
   uniform float uEnter;      // 0..1 signal breakup
   uniform float uChaos;      // extra interference while the channel is hunted
   uniform float uContentMix; // 0 = copy on the tube, 1 = the model on the tube
+  uniform float uFlash;      // tube blowing out — the channel-change pulses
+  uniform float uDispAspect; // aspect of the surface being drawn on
   uniform sampler2D uText;
   uniform sampler2D uContent;
   varying vec2 vUv;
@@ -155,7 +157,17 @@ const screenFrag = /* glsl */ `
        own buffer. Sampled clean — no split, no snow, no scanline over it. It is
        meant to be the same object the page shows a moment later, so anything
        done to it here is a difference the reveal would have to undo. */
-    vec4 cont = texture2D(uContent, suv);
+    /* Aspect-fit, not stretch. The content buffer is 1.3128 (the glass), but
+       full screen the surface is the viewport — sampling it straight smeared
+       the mark sideways into a blob. Widening the sample coordinate on the long
+       axis letterboxes it instead, so the mark keeps its shape on any surface. */
+    const float CONT_ASPECT = 1.3128;
+    vec2 cuv = suv - 0.5;
+    if (uDispAspect > CONT_ASPECT) cuv.x *= uDispAspect / CONT_ASPECT;
+    else cuv.y *= CONT_ASPECT / uDispAspect;
+    cuv += 0.5;
+    vec4 cont = texture2D(uContent, cuv);
+    if (cuv.x < 0.0 || cuv.x > 1.0 || cuv.y < 0.0 || cuv.y > 1.0) cont = vec4(0.0);
     float lock = cont.a * uContentMix;
 
     // Dense two-scale snow, swelling during ENTER until it eats the signal.
@@ -190,6 +202,11 @@ const screenFrag = /* glsl */ `
     // edge0 > edge1 is undefined in GLSL and misbehaves on some Intel iGPUs.
     vec2 e = suv - 0.5;
     col *= 1.0 - smoothstep(0.34, 1.05, dot(e, e) * 2.2);
+
+    /* The channel-change pulse. Added after the vignette so the whole tube
+       lifts, including its dark edges — a CRT surging does not respect the
+       falloff. Clamped inside the glass bounds below. */
+    col += vec3(0.66, 0.80, 1.0) * uFlash;
 
     if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) col = vec3(0.0);
     gl_FragColor = vec4(col, 1.0);
@@ -270,6 +287,8 @@ export interface CrtHandle {
   setChaos: (v: number) => void
   /** cut to the tube's picture filling the viewport (no camera, no geometry) */
   setProjection: (on: boolean) => void
+  /** blow the tube out — drives the channel-change pulses */
+  setFlash: (v: number) => void
   /** crossfade the tube from type to the live model, 0..1 */
   setContentMix: (v: number) => void
   /** the spherical sign-off warp, 0..1 */
@@ -370,6 +389,8 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       uEnter: { value: 0 },
       uChaos: { value: 0 },
       uContentMix: { value: 0 },
+      uFlash: { value: 0 },
+      uDispAspect: { value: 1.3128 },
       uText: { value: screen.tex },
       uContent: { value: contentRT.texture },
     },
@@ -618,7 +639,12 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     if (path) stepPath(now)
     const t = now * 0.001
     screenMat.uniforms.uTime.value = t
-    screenGlow.intensity = 2.2 + Math.sin(t * 19.0) * 0.25 + screenMat.uniforms.uEnter.value * 4.0
+    // the tube's own light, so a pulse throws itself across the room too
+    screenGlow.intensity =
+      2.2 +
+      Math.sin(t * 19.0) * 0.25 +
+      screenMat.uniforms.uEnter.value * 4.0 +
+      screenMat.uniforms.uFlash.value * 9.0
 
     // the tube's own broadcast, only while it is actually on screen
     if (contentLoaded && screenMat.uniforms.uContentMix.value > 0.001) {
@@ -637,6 +663,10 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     // once we have cut to the projection, the room is no longer drawn at all
     const source = projection ? projScene : scene
     const sourceCam = projection ? postCam : camera
+    // on the tube the surface is the glass; full screen it is the viewport
+    screenMat.uniforms.uDispAspect.value = projection
+      ? container.clientWidth / Math.max(1, container.clientHeight)
+      : 1.3128
 
     if (warp > 0.0005) {
       renderer.setRenderTarget(sceneRT)
@@ -664,6 +694,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     setScreenText: (lines: ScreenLine[]) => screen.draw(lines),
     setChaos: (v: number) => { screenMat.uniforms.uChaos.value = v },
     setProjection: (on: boolean) => { projection = on },
+    setFlash: (v: number) => { screenMat.uniforms.uFlash.value = v },
     setContentMix: (v: number) => { screenMat.uniforms.uContentMix.value = v },
     setWarp: (v: number) => { warp = v },
     loadContent: () => {

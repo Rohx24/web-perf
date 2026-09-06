@@ -639,21 +639,16 @@
   pointer-events: none;
 }
 
-/* The room has to travel with the camera. Fading a motionless room while the
-   tube grows gives the eye nothing to measure against, and the brain reads the
-   only moving object as the thing that moved — the television. Pushing the
-   room past the viewer is the cue that says the viewpoint is travelling.
-   The origin is the tube, so the room opens away from it rather than from the
-   middle of the frame. */
+/* The room simply goes dark under the pulses. It used to push past the viewer,
+   which was a cue for a camera move that no longer exists — with nothing
+   travelling, a moving room reads as the room moving. */
 .intro-root.flying .intro-stage {
-  transform-origin: calc(var(--crt-left) + var(--crt-w) / 2) calc(var(--crt-top) + var(--crt-h) / 2);
-  animation: roomPush 2.6s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+  animation: roomOut 1.15s ease-in 0.28s forwards;
   pointer-events: none;
 }
-@keyframes roomPush {
-  from { opacity: 1; scale: 1; }
-  55% { opacity: 0.55; }
-  to { opacity: 0; scale: 1.4; }
+@keyframes roomOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* ?cam=1 — the editor needs the same full-frame canvas the flight uses */
@@ -673,15 +668,16 @@
 /* The channel change: one hard flash as the picture takes the screen. A CRT
    switching source does not glide, it snaps — which is the whole reason the
    camera move is gone. */
-.intro-root.switching .intro-set { animation: chFlash 160ms steps(2, end); }
-@keyframes chFlash {
-  0% { filter: brightness(1); }
-  40% { filter: brightness(2.6) contrast(1.3); }
-  100% { filter: brightness(1); }
-}
-.intro-root.switching .intro-stage,
+/* The pulses themselves are in the tube's shader, so the glass really lifts and
+   throws light into the room. All that is left here is clearing the type out of
+   the way, and letting the room go dark a beat later — so you watch the set
+   flashing in its own room first, which is the whole point of the beat. */
 .intro-root.switching .intro-left,
-.intro-root.switching .intro-corner { opacity: 0; }
+.intro-root.switching .intro-corner {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
 
 /* ------------------------------------------------------------------ *
  * Sign-off. The spherical warp in crtScene does the actual reveal — it

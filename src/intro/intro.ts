@@ -154,15 +154,47 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
     opts.prefetch?.()
     void crt.loadContent()
 
-    // the snap itself: a channel-change flash, then the picture is the screen
-    crt.setEnter(0.55)
+    /* The channel change: the tube pulses five times, the gaps closing and each
+       pulse brighter than the last, until it blows out — and the blow-out
+       settles down into the full-screen picture rather than cutting to it.
+       Driven off one clock rather than chained timers so the envelope stays
+       exact even if a frame is late. */
+    crt.setEnter(0.5)
     root.classList.add('switching')
-    window.setTimeout(() => {
+    const ONSETS = [0, 330, 590, 795, 950] // accelerating
+    const PEAKS = [0.5, 0.7, 0.95, 1.3, 1.9] // and brighter each time
+    const PULSE = 95 // how long one pulse takes to fall away
+    const CUT = 1075 // the blow-out, and the moment the picture takes over
+    const SETTLE = 1000 // how long that blow-out takes to calm into the picture
+
+    const t0 = performance.now()
+    let cut = false
+    const drive = () => {
+      const e = performance.now() - t0
+      let v = 0
+      for (let i = 0; i < ONSETS.length; i++) {
+        const d = e - ONSETS[i]
+        if (d >= 0 && d < PULSE) v = Math.max(v, PEAKS[i] * (1 - d / PULSE))
+      }
+      if (e >= CUT) {
+        if (!cut) { cut = true; takeOver() }
+        const s = Math.min(1, (e - CUT) / SETTLE)
+        v = Math.max(v, 2.3 * (1 - s) * (1 - s)) // eases out, so it settles
+      }
+      crt.setFlash(v)
+      if (e < CUT + SETTLE) requestAnimationFrame(drive)
+      else crt.setFlash(0)
+    }
+    requestAnimationFrame(drive)
+
+    function takeOver () {
       crt.setProjection(true)
       crt.setEnter(0.3)
       root.classList.remove('switching')
-      transmission()
-    }, 160)
+      window.setTimeout(transmission, 620)
+    }
+    // rAF is suspended while the tab is hidden; timers are not
+    window.setTimeout(() => { if (!cut) { cut = true; crt.setFlash(0); takeOver() } }, CUT + 250)
 
     /* 3. The tube hunts for a channel, then locks onto the model: the snow
        peaks, the copy dies, and the RD letter simply arrives in the middle of
