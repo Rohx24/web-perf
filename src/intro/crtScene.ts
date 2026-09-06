@@ -108,32 +108,34 @@ function makeScreenTexture () {
     g.textBaseline = 'middle'
     const totalH = lines.reduce((a, l) => a + l.s + l.gap, 0)
 
-    /* A plate under the copy first. The tube shows a lamp lattice over a live,
-       moving page — type laid straight onto that has nothing to sit against and
-       is unreadable whatever colour it is. The plate travels in the same alpha
-       channel as the glyphs, so it darkens the picture behind exactly where the
-       words are and nowhere else. */
-    let py = (c.height - totalH) / 2 + 10
-    for (const l of lines) {
-      py += l.s / 2
-      g.font = `${l.b ? '700' : '500'} ${l.s * 1.55}px "Courier New", ui-monospace, monospace`
-      const wpx = g.measureText(l.t).width
-      const padX = l.s * 1.1
-      const padY = l.s * 0.62
-      const grad = g.createLinearGradient(0, py - l.s - padY, 0, py + l.s + padY)
-      grad.addColorStop(0, 'rgba(2,3,8,0)')
-      grad.addColorStop(0.25, 'rgba(2,3,8,0.88)')
-      grad.addColorStop(0.75, 'rgba(2,3,8,0.88)')
-      grad.addColorStop(1, 'rgba(2,3,8,0)')
-      g.fillStyle = grad
-      g.fillRect((c.width - wpx) / 2 - padX, py - l.s - padY, wpx + padX * 2, (l.s + padY) * 2)
-      py += l.s / 2 + l.gap
-    }
-
+    /* Type over a moving picture needs separation, not a box. The plates that
+       used to be here were literal dark rectangles behind each line and they
+       looked exactly like what they were. This carries the darkness on the
+       glyphs instead: a few shadow passes build a soft pool that follows the
+       letterforms, and a dark stroke keeps the edges crisp where the picture
+       behind is bright. */
     let y = (c.height - totalH) / 2 + 10
     for (const l of lines) {
       y += l.s / 2
       g.font = `${l.b ? '700' : '500'} ${l.s * 1.55}px "Courier New", ui-monospace, monospace`
+
+      // the pool: wide and soft, built up rather than drawn as a shape
+      g.shadowColor = 'rgba(0,0,0,0.9)'
+      g.shadowOffsetX = 0
+      g.shadowOffsetY = 0
+      for (const blur of [26, 16, 9]) {
+        g.shadowBlur = blur
+        g.fillStyle = 'rgba(0,0,0,0.9)'
+        g.fillText(l.t, c.width / 2, y)
+      }
+      g.shadowBlur = 0
+
+      // a thin dark edge, so the glyph still separates on a bright cell
+      g.lineJoin = 'round'
+      g.lineWidth = Math.max(2, l.s * 0.16)
+      g.strokeStyle = 'rgba(0,0,0,0.85)'
+      g.strokeText(l.t, c.width / 2, y)
+
       g.fillStyle = l.c
       g.fillText(l.t, c.width / 2, y)
       y += l.s / 2 + l.gap
@@ -263,15 +265,21 @@ const screenFrag = /* glsl */ `
        live hero, seen through a television. */
     if (uOverlay > 0.5) {
       vec2 ev = suv - 0.5;
-      float scan = 0.22 * (0.5 - 0.5 * sin(suv.y * 820.0));
-      float vig = smoothstep(0.28, 1.05, dot(ev, ev) * 2.2);
-      // lamps and interference both stand off the copy, so it has clean ground
-      float lat = lampMask * 0.18 * (1.0 - ta);
-      float noise = interference * 0.6 * (1.0 - ta * 0.9);
-      float a = clamp(scan + vig * 0.92 + lat + ta + noise, 0.0, 1.0);
+      /* A real tube does not ADD light on top of the picture, it takes it away
+         BETWEEN the cells — the picture is what shines through the gaps in a
+         dark mask. Painting lit lamps over the hero was the mistake: every lamp
+         was another bright dot on an already-bright page, which is why it went
+         white and read as a screen door. This darkens the mask instead, so the
+         hero's own colour comes through the cell centres. */
+      float grille = (1.0 - lampMask) * 0.34;
+      float scan = 0.15 * (0.5 - 0.5 * sin(suv.y * 900.0));
+      float vig = smoothstep(0.34, 1.10, dot(ev, ev) * 2.2);
+      float noise = interference * 0.5;
+
+      float a = clamp(grille + scan + vig * 0.92 + ta + noise, 0.0, 1.0);
       float inv = 1.0 / max(a, 0.001);
+      // grille, scanline and vignette are all just darkness
       vec3 c = vec3(0.0);
-      c = mix(c, lamp, clamp(lat * inv, 0.0, 1.0));
       c = mix(c, vec3(0.62, 0.78, 1.0), clamp(noise * inv, 0.0, 1.0));
       c = mix(c, vec3(tr, tg, tb), clamp(ta * inv, 0.0, 1.0));
       c += vec3(0.66, 0.80, 1.0) * uFlash;
@@ -641,6 +649,10 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     screenMat.uniforms.uDispAspect.value = projection
       ? container.clientWidth / Math.max(1, container.clientHeight)
       : 1.3128
+    /* Lamp count is per-surface. On the little tube 74 across reads as a panel;
+       blown up to the whole window the same 74 becomes polka dots. Full screen
+       wants a fine grille, which is what a tube actually looks like up close. */
+    screenMat.uniforms.uLedPitch.value = projection ? num('ledsFull', 190) : num('leds', 74)
 
     renderer.render(source, sourceCam)
   }

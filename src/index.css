@@ -1352,6 +1352,9 @@ canvas {
 /* Résumé download on the contact CRT — a single action, nothing else. */
 .rd-crt-cv {
   display: inline-block;
+  /* The CRT container is pointer-transparent so the wheel scrolls the panel
+     behind it; every control inside has to opt back in, as the links do. */
+  pointer-events: auto;
   margin-top: clamp(16px, 2.4vw, 26px);
   padding: 10px 20px;
   border-radius: 999px;
