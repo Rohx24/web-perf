@@ -33,7 +33,7 @@ const MENU = [
  * and menu (left). ENTER cuts to the tube's own picture full screen, hunts for
  * a channel, locks onto the hero's mark, then hands off to the real portfolio.
  */
-export function startIntro (opts: { onEnter: (target: string) => void; prefetch?: () => void }) {
+export function startIntro (opts: { onEnter: (target: string) => void }) {
   const root = document.createElement('div')
   root.className = 'intro-root'
   root.innerHTML = `
@@ -160,9 +160,8 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
        mounts yet — so the heavy work is done by the time the transmission ends
        and the reveal can show a page that is actually ready. The tube's model
        is the hero's own file, so this warms it for the page too. */
-    opts.prefetch?.()
-    // one texture, or nothing at all — see STILL in crtScene
-    const stillReady = crt.loadContent()
+    // The page is already mounted and running underneath — see main.tsx. There
+    // is nothing to fetch here any more.
 
     /* The channel change: the tube pulses five times, the gaps closing and each
        pulse brighter than the last, until it blows out — and the blow-out
@@ -204,10 +203,14 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
        hauled the tube right up to the camera before it had even blinked — it
        should blink where it stands, in its own room, and only then become the
        screen. */
+    /* The picture takes the screen — and from here it IS the live hero, seen
+       through the tube. The canvas paints only the television's own artefacts
+       and the page runs underneath it. */
     function takeOver () {
       root.appendChild(set)
-      root.classList.add('flying')
+      root.classList.add('flying', 'hero-live')
       crt.setProjection(true)
+      crt.setOverlay(true)
       crt.setEnter(0.3)
       root.classList.remove('switching')
       window.setTimeout(transmission, 620)
@@ -237,23 +240,19 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
     }
 
     /** The lock-on: chaos snaps off, the model fades up on the glass. */
+    /** The lock: the interference clears off the picture underneath. */
     function lock () {
-      const DUR = 620
-      stillReady.then((ok) => {
-        // with no still shipped the tube just holds its copy and hands off
-        if (!ok) { crt.setChaos(0); crt.setEnter(0.15); window.setTimeout(handoff, 600); return }
-        crt.setScreenText([])
-        const t1 = performance.now()
-        const fade = () => {
-          const p = Math.min(1, (performance.now() - t1) / DUR)
-          crt.setContentMix(p)
-          crt.setEnter(0.9 * (1 - p))
-          crt.setChaos(1.0 - p)
-          if (p < 1) requestAnimationFrame(fade)
-        }
-        requestAnimationFrame(fade)
-        window.setTimeout(handoff, DUR + 900)
-      })
+      crt.setScreenText([])
+      const t1 = performance.now()
+      const DUR = 700
+      const settle = () => {
+        const p = Math.min(1, (performance.now() - t1) / DUR)
+        crt.setChaos(1.0 - p)
+        crt.setEnter(0.9 * (1 - p))
+        if (p < 1) requestAnimationFrame(settle)
+      }
+      requestAnimationFrame(settle)
+      window.setTimeout(handoff, DUR + 900)
     }
 
     /* 4. The hand-off. The site mounts behind the still-lit tube, then the tube

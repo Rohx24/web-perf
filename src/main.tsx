@@ -1,5 +1,6 @@
 import './index.css'
 import { startIntro } from './intro/intro'
+import { setIntroActive } from './perf/introState'
 
 const root = document.getElementById('root')!
 const SKIP =
@@ -7,14 +8,17 @@ const SKIP =
 
 if (SKIP) {
   // Straight to the portfolio (dev / deep-link).
+  setIntroActive(false)
   import('./mountPortfolio').then((m) => m.mountPortfolio(root, 'enter'))
 } else {
-  // The CRT title screen shows first; the portfolio is mounted lazily on ENTER,
-  // so nothing of the heavy site loads until the visitor chooses to enter.
+  /* The portfolio mounts NOW, underneath the title screen, not on ENTER.
+
+     The tube shows the live hero, so the hero has to be running for there to be
+     anything in it — and covering the load is what a loading screen is for.
+     While it is covered it renders at INTRO_DPR, a fraction of the pixels,
+     because it is being watched through a television. */
+  import('./mountPortfolio').then((m) => m.mountPortfolio(root, 'enter'))
   startIntro({
-    // warm the chunk during the flight so the reveal lands on a ready page —
-    // this only fetches and parses, nothing mounts until onEnter
-    prefetch: () => { void import('./mountPortfolio') },
-    onEnter: (target) => import('./mountPortfolio').then((m) => m.mountPortfolio(root, target)),
+    onEnter: () => setIntroActive(false),
   })
 }

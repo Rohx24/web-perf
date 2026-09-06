@@ -135,6 +135,7 @@ const screenFrag = /* glsl */ `
   uniform float uFlash;      // tube blowing out — the channel-change pulses
   uniform float uDispAspect; // aspect of the surface being drawn on
   uniform float uLedPitch;   // lamps across the display
+  uniform float uOverlay;    // 1 = draw only the tube's effects, over the live page
   uniform sampler2D uText;
   uniform sampler2D uContent;
   varying vec2 vUv;
@@ -229,6 +230,33 @@ const screenFrag = /* glsl */ `
     col = mix(col, vec3(tr, tg, tb), ta * (1.0 - uContentMix));
     col = mix(col, cont.rgb, lock);
 
+    /* WINDOW MODE.
+
+       The hero is a real, running scene on its own canvas directly beneath this
+       one. Rather than copy it into a texture — which would mean a second
+       render of it every frame, the exact cost this screen exists to avoid —
+       the tube stops painting a picture and paints only its own artefacts, with
+       alpha. The page shows through the gaps, so what you are watching IS the
+       live hero, seen through a television. */
+    if (uOverlay > 0.5) {
+      vec2 ev = suv - 0.5;
+      float scan = 0.22 * (0.5 - 0.5 * sin(suv.y * 820.0));
+      float vig = smoothstep(0.28, 1.05, dot(ev, ev) * 2.2);
+      float lat = lampMask * 0.18;
+      float noise = interference * 0.6;
+      float a = clamp(scan + vig * 0.92 + lat + ta + noise, 0.0, 1.0);
+      float inv = 1.0 / max(a, 0.001);
+      vec3 c = vec3(0.0);
+      c = mix(c, lamp, clamp(lat * inv, 0.0, 1.0));
+      c = mix(c, vec3(0.62, 0.78, 1.0), clamp(noise * inv, 0.0, 1.0));
+      c = mix(c, vec3(tr, tg, tb), clamp(ta * inv, 0.0, 1.0));
+      c += vec3(0.66, 0.80, 1.0) * uFlash;
+      // outside the curved glass is the bezel: solid, not see-through
+      if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) { c = vec3(0.0); a = 1.0; }
+      gl_FragColor = vec4(c, a);
+      return;
+    }
+
     // the tube's own artefacts back off wherever the mark is
     col *= mix(0.80 + 0.20 * sin(suv.y * 820.0), 1.0, lock * 0.85);   // scanlines
     col *= mix(0.95 + 0.05 * sin(uTime * 31.0) + uEnter * 0.2, 1.0, lock * 0.85);
@@ -314,6 +342,8 @@ export interface CrtHandle {
   setChaos: (v: number) => void
   /** cut to the tube's picture filling the viewport (no camera, no geometry) */
   setProjection: (on: boolean) => void
+  /** paint only the tube's artefacts, so the live page shows through */
+  setOverlay: (on: boolean) => void
   /** blow the tube out — drives the channel-change pulses */
   setFlash: (v: number) => void
   /** crossfade the tube from type to the live model, 0..1 */
@@ -397,6 +427,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       uFlash: { value: 0 },
       uDispAspect: { value: 1.3128 },
       uLedPitch: { value: num('leds', 74) },
+      uOverlay: { value: 0 },
       uText: { value: screen.tex },
       uContent: { value: null },
     },
@@ -687,6 +718,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     setScreenText: (lines: ScreenLine[]) => screen.setLines(lines),
     setChaos: (v: number) => { screenMat.uniforms.uChaos.value = v },
     setProjection: (on: boolean) => { projection = on },
+    setOverlay: (on: boolean) => { screenMat.uniforms.uOverlay.value = on ? 1 : 0 },
     setFlash: (v: number) => { screenMat.uniforms.uFlash.value = v },
     setContentMix: (v: number) => { screenMat.uniforms.uContentMix.value = v },
     setWarp: (v: number) => { warp = v },

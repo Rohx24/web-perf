@@ -694,6 +694,14 @@
   to { opacity: 0; }
 }
 
+/* Window mode: the page is running underneath, so this layer must not paint a
+   ground of its own. Everything but the tube's own canvas gets out of the way. */
+.intro-root.hero-live { background: transparent; }
+.intro-root.hero-live .intro-stage,
+.intro-root.hero-live .intro-scan,
+.intro-root.hero-live .intro-grade,
+.intro-root.hero-live .intro-roll { display: none; }
+
 /* During the reveal this layer has to be see-through, or the front wipes it
    away to reveal the intro's own black rather than the page. */
 .intro-root.revealing { background: transparent; }

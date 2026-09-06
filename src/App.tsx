@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Preload } from '@react-three/drei'
 import { QUALITY, IS_MOBILE } from './perf/quality'
 import { AdaptiveQuality } from './perf/AdaptiveQuality'
+import { INTRO_DPR, introActive, onIntroChange } from './perf/introState'
 import { StatsProbe } from './perf/Stats'
 import { GridLayer } from './scene/GridLayer'
 import { MarkerLayer } from './scene/MarkerLayer'
@@ -36,7 +37,15 @@ export default function App() {
   // Live render resolution. Starts at the device's tier ceiling, then
   // AdaptiveQuality raises/lowers it from the *measured* frame rate — so any
   // laptop self-tunes to a smooth framerate instead of relying on a guess.
-  const [dpr, setDpr] = useState(QUALITY.dprMax)
+  /* While the title screen is up the hero is only ever seen inside a
+     television, so it renders at a fraction of the pixels — that is what makes
+     mounting it up front affordable. It goes to the tier ceiling the moment the
+     intro lets go, and AdaptiveQuality takes over from there. */
+  const [dpr, setDpr] = useState(introActive() ? INTRO_DPR : QUALITY.dprMax)
+  useEffect(
+    () => onIntroChange((stillUp) => setDpr(stillUp ? INTRO_DPR : QUALITY.dprMax)),
+    [],
+  )
 
   return (
     <>
