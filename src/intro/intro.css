@@ -670,6 +670,19 @@
 .intro-root.cam-mode .intro-halo,
 .intro-root.cam-mode .intro-spill { display: none; }
 
+/* The channel change: one hard flash as the picture takes the screen. A CRT
+   switching source does not glide, it snaps — which is the whole reason the
+   camera move is gone. */
+.intro-root.switching .intro-set { animation: chFlash 160ms steps(2, end); }
+@keyframes chFlash {
+  0% { filter: brightness(1); }
+  40% { filter: brightness(2.6) contrast(1.3); }
+  100% { filter: brightness(1); }
+}
+.intro-root.switching .intro-stage,
+.intro-root.switching .intro-left,
+.intro-root.switching .intro-corner { opacity: 0; }
+
 /* ------------------------------------------------------------------ *
  * Sign-off. The spherical warp in crtScene does the actual reveal — it
  * blows the frame out as the zoom drives through — so all that is left

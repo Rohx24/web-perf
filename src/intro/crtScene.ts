@@ -167,20 +167,23 @@ const screenFrag = /* glsl */ `
     // whole scan rows brighten and dim together → horizontal streaking
     float row = hash(vec2(floor(suv.y * 240.0), floor(uTime * 22.0)));
     snow *= 0.62 + 0.6 * row;
-    // hunting for the channel: the picture tears and the snow doubles
-    snow *= 1.0 + uChaos * 2.2;
+    // hunting for the channel: the picture tears and the snow thickens
+    snow *= 1.0 + uChaos * 1.15;
 
     vec3 tube = vec3(0.022, 0.038, 0.085);
     vec3 snowCol = mix(vec3(0.20, 0.50, 0.95), vec3(0.82, 0.92, 1.0), snow);
-    // The signal burns through the snow where the copy is, so the text stays
-    // readable instead of being chewed up by the streaking.
-    vec3 col = tube + snowCol * snow * (0.78 + uEnter * 2.4) * (1.0 - ta * 0.6) * (1.0 - lock);
-    col += vec3(tr, tg, tb) * ta * (1.9 - uEnter * 1.4) * (1.0 - uContentMix);
+    /* The copy has to survive the worst of the interference, so the snow is
+       held back hard wherever type is and the type does NOT dim as uEnter
+       climbs. Both were the wrong way round: the snow gained 2.4x while the
+       text lost 1.4x, which is why CHANNEL LOCKED blew out into an unreadable
+       white field exactly at the peak. */
+    vec3 col = tube + snowCol * snow * (0.78 + uEnter * 0.85) * (1.0 - ta * 0.9) * (1.0 - lock);
+    col += vec3(tr, tg, tb) * ta * 1.95 * (1.0 - uContentMix);
     col += cont.rgb * lock;
 
     // the tube's own artefacts back off wherever the mark is
     col *= mix(0.80 + 0.20 * sin(suv.y * 820.0), 1.0, lock * 0.85);   // scanlines
-    col *= mix(0.95 + 0.05 * sin(uTime * 31.0) + uEnter * 0.85, 1.0, lock * 0.85);
+    col *= mix(0.95 + 0.05 * sin(uTime * 31.0) + uEnter * 0.2, 1.0, lock * 0.85);
     col *= vec3(0.84, 0.94, 1.12);                               // cold tube cast
 
     // Glass falloff. Written as 1.0 - smoothstep(lo, hi, d): smoothstep with
@@ -265,6 +268,8 @@ export interface CrtHandle {
   setScreenText: (lines: ScreenLine[]) => void
   /** interference while the channel is being hunted, 0..1 */
   setChaos: (v: number) => void
+  /** cut to the tube's picture filling the viewport (no camera, no geometry) */
+  setProjection: (on: boolean) => void
   /** crossfade the tube from type to the live model, 0..1 */
   setContentMix: (v: number) => void
   /** the spherical sign-off warp, 0..1 */
@@ -392,6 +397,24 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   })
   postScene.add(new Mesh(new PlaneGeometry(2, 2), postMat))
   let warp = 0
+
+  /* The projection: the tube's picture drawn straight onto the viewport, with
+     no model and no camera involved at all. Pressing ENTER cuts to this rather
+     than flying a camera at the set — there is no geometry to rotate, shear or
+     resize, so none of that can go wrong. It shares the screen material's
+     uniform objects by reference, so the two surfaces are always the same
+     broadcast; only the vertex stage differs. */
+  const projScene = new Scene()
+  const projMat = new ShaderMaterial({
+    uniforms: screenMat.uniforms,
+    vertexShader: quadVert,
+    fragmentShader: screenFrag,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  })
+  projScene.add(new Mesh(new PlaneGeometry(2, 2), projMat))
+  let projection = false
 
   // rig: yaw lives on the pivot, the model is re-centred inside it, so the box
   // always spins about its own middle no matter how the GLB was authored.
@@ -611,10 +634,14 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       renderer.setRenderTarget(null)
     }
 
+    // once we have cut to the projection, the room is no longer drawn at all
+    const source = projection ? projScene : scene
+    const sourceCam = projection ? postCam : camera
+
     if (warp > 0.0005) {
       renderer.setRenderTarget(sceneRT)
       renderer.clear()
-      renderer.render(scene, camera)
+      renderer.render(source, sourceCam)
       renderer.setRenderTarget(null)
       // the bubble is born at the glass, wherever the glass happens to be
       const sp = screenCentre.clone().project(camera)
@@ -623,7 +650,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       postMat.uniforms.uProg.value = warp
       renderer.render(postScene, postCam)
     } else {
-      renderer.render(scene, camera)
+      renderer.render(source, sourceCam)
     }
   }
   raf = requestAnimationFrame(tick)
@@ -636,6 +663,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     onReady: (cb) => { if (ready) cb(); else readyCbs.push(cb) },
     setScreenText: (lines: ScreenLine[]) => screen.draw(lines),
     setChaos: (v: number) => { screenMat.uniforms.uChaos.value = v },
+    setProjection: (on: boolean) => { projection = on },
     setContentMix: (v: number) => { screenMat.uniforms.uContentMix.value = v },
     setWarp: (v: number) => { warp = v },
     loadContent: () => {
