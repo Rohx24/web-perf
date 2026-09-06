@@ -1,6 +1,10 @@
 import './index.css'
 import { startIntro } from './intro/intro'
 import { setIntroActive } from './perf/introState'
+import { applyVibrance, readVibrance } from './perf/quality'
+
+// the viewer's saturation preference, before anything paints
+applyVibrance(readVibrance())
 
 const root = document.getElementById('root')!
 const SKIP =

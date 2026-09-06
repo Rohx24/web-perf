@@ -188,3 +188,37 @@ export const IS_MOBILE: boolean = (() => {
   if (params.get('mobile') === '1') return true // force mobile mode (test on desktop)
   return isMobile()
 })()
+
+/* ---- Vibrance ----------------------------------------------------------
+   Saturation, as a viewer preference. Applied as a filter on the canvas layer
+   rather than baked into the wall's shader, so it reaches everything on screen
+   at once and can be dragged live without rebuilding the renderer.
+
+   The class gate matters: at 1 no filter is attached at all, so the default
+   costs exactly nothing. Only a viewer who moves it pays for it. */
+export const VIBRANCE_STORAGE_KEY = 'rd.vibrance'
+
+export function readVibrance(): number {
+  try {
+    const v = Number(localStorage.getItem(VIBRANCE_STORAGE_KEY))
+    return Number.isFinite(v) && v >= 0.5 && v <= 1.8 ? v : 1
+  } catch {
+    return 1
+  }
+}
+
+export function applyVibrance(v: number): void {
+  const el = document.documentElement
+  if (Math.abs(v - 1) < 0.01) {
+    el.classList.remove('rd-vibrance')
+    el.style.removeProperty('--rd-vibrance')
+    return
+  }
+  el.style.setProperty('--rd-vibrance', String(v))
+  el.classList.add('rd-vibrance')
+}
+
+export function saveVibrance(v: number): void {
+  try { localStorage.setItem(VIBRANCE_STORAGE_KEY, String(v)) } catch { /* blocked */ }
+  applyVibrance(v)
+}

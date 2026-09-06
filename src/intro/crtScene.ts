@@ -61,7 +61,7 @@ const SCREEN_LINES = [
   { t: "YOU'RE ABOUT TO SEE WHAT HAPPENS", s: 21, c: '#c2d8ff', gap: 6 },
   { t: 'WHEN AN ENGINEER GETS BORED.', s: 21, c: '#c2d8ff', gap: 38 },
   { t: 'AI. SOFTWARE. SYSTEMS.', s: 21, c: '#c2d8ff', gap: 6 },
-  { t: 'AND A QUESTIONABLE AMOUNT OF CHAI.', s: 21, c: '#c2d8ff', gap: 44 },
+  { t: 'AND A QUESTIONABLE AMOUNT OF COFFEE.', s: 21, c: '#c2d8ff', gap: 44 },
   { t: '[ ENTER TO TRANSMIT ]', s: 22, c: '#ffffff', b: true, gap: 0 },
 ]
 

@@ -68,7 +68,7 @@ const ACHIEVEMENTS: [string, string, string][] = [
 
 const CERTS: [string, string, string][] = [
   ['Affective Computing', 'NPTEL · 91/100', 'AI × psychology × design — machines that recognise and respond to human emotion.'],
-  ['Software Testing', 'NPTEL · 70/100 · Elite + Top 1%', '12-week course — test design, black/white-box techniques, automation, QA across the SDLC.'],
+  ['Software Testing', 'NPTEL', '12-week course — test design, black/white-box techniques, automation, QA across the SDLC.'],
   ['Transformer Models & BERT', 'Simplilearn × Google Cloud', 'Attention mechanisms, transformer language modelling, and BERT in NLP tasks.'],
   ['Open Source Models with Hugging Face', 'Simplilearn SkillUp', 'The HF ecosystem, open-source model selection, and practical NLP usage.'],
   ['Introduction to LangGraph', 'Simplilearn SkillUp', 'Agentic workflow orchestration, stateful multi-step LLM pipelines, graph-based agents.'],

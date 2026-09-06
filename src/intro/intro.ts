@@ -1,6 +1,13 @@
 import './intro.css'
 import { createCrtScene, type CrtHandle, type ScreenLine } from './crtScene'
-import { QUALITY, TIER_STORAGE_KEY, autoTier, type Tier } from '../perf/quality'
+import {
+  QUALITY,
+  TIER_STORAGE_KEY,
+  autoTier,
+  readVibrance,
+  saveVibrance,
+  type Tier,
+} from '../perf/quality'
 
 
 
@@ -27,6 +34,7 @@ const MENU = [
   { id: 'enter', label: 'Enter System' },
   { id: 'resume', label: 'Résumé' },
   { id: 'contact', label: 'Contact' },
+  { id: 'settings', label: 'Settings' },
 ]
 
 /**
@@ -58,13 +66,21 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     <div class="intro-corner tl">RD · 2026<br>BENGALURU, IN</div>
     <div class="intro-corner tr">CH 06<br>SIGNAL: <span class="hi">FOUND</span><br>USER: ROHIT<br>STATUS: BUILDING</div>
     <div class="intro-corner bl">SAME BRAIN<br>DIFFERENT DAY</div>
-    <div class="intro-corner br">RUNNING ON<br>TOO MUCH CHAI</div>
+    <div class="intro-corner br">RUNNING ON<br>TOO MUCH COFFEE</div>
     <div class="intro-left">
       <div class="intro-title"><span class="r">Rohit</span><span class="d" data-t="DIGGI">DIGGI</span></div>
       <div class="intro-menu"></div>
-      <div class="intro-quality">
-        <span class="intro-quality-label">Quality</span>
-        <div class="intro-quality-opts"></div>
+      <div class="intro-settings" hidden>
+        <div class="intro-set-row">
+          <span class="intro-set-label">Quality</span>
+          <div class="intro-quality-opts"></div>
+        </div>
+        <div class="intro-set-row">
+          <span class="intro-set-label">Vibrance</span>
+          <input class="intro-vib" type="range" min="0.5" max="1.8" step="0.05" />
+          <span class="intro-vib-val"></span>
+        </div>
+        <p class="intro-set-note">Quality reloads. Vibrance applies as you drag.</p>
       </div>
     </div>
     <div class="intro-scan"></div>
@@ -99,6 +115,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     { id: 'high', label: 'High' },
     { id: 'auto', label: 'Auto' },
   ]
+  const panel = root.querySelector('.intro-settings') as HTMLElement
   const qWrap = root.querySelector('.intro-quality-opts') as HTMLElement
   for (const o of QOPTS) {
     const b = document.createElement('button')
@@ -118,6 +135,19 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     })
     qWrap.appendChild(b)
   }
+
+  // Vibrance drags live — it is only a filter on the composited canvas, so
+  // there is no renderer to rebuild and no reason to make anyone reload for it.
+  const vib = root.querySelector('.intro-vib') as HTMLInputElement
+  const vibVal = root.querySelector('.intro-vib-val') as HTMLElement
+  vib.value = String(readVibrance())
+  vibVal.textContent = `${Math.round(readVibrance() * 100)}%`
+  vib.addEventListener('input', () => {
+    const v = Number(vib.value)
+    vibVal.textContent = `${Math.round(v * 100)}%`
+    saveVibrance(v)
+  })
+  vib.addEventListener('click', (e) => e.stopPropagation())
 
   // --- 3D CRT ---
   const crt: CrtHandle = createCrtScene(root.querySelector('.intro-crt') as HTMLElement)
@@ -174,6 +204,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   function activate () {
     const id = MENU[sel].id
     if (id === 'resume') { window.open('/resume.html', '_blank'); return }
+    if (id === 'settings') { panel.hidden = !panel.hidden; return }
     runEnter(id)
   }
 

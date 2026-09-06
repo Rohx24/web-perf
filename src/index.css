@@ -1369,3 +1369,10 @@ canvas {
   background: rgba(255, 255, 255, 0.14);
   transform: translateY(-1px);
 }
+
+/* Vibrance. Only attached when the viewer has actually moved it off 1 — an
+   identity filter is still a filter, and this rides on an animating canvas. */
+html.rd-vibrance .rd-canvas,
+html.rd-vibrance .rd-finale {
+  filter: saturate(var(--rd-vibrance, 1));
+}
