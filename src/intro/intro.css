@@ -670,6 +670,28 @@
 .intro-root.cam-mode .intro-halo,
 .intro-root.cam-mode .intro-spill { display: none; }
 
+/* ------------------------------------------------------------------ *
+ * Sign-off: the tube switches off the way a real CRT does — the picture
+ * collapses to a bright horizontal line, then that line snaps to a point.
+ * The hero is already mounted behind it, so this reveals rather than
+ * fades. Pure transform and opacity, so it stays on the compositor.
+ * ------------------------------------------------------------------ */
+.intro-root.signing-off .intro-set {
+  animation: crtOff 560ms cubic-bezier(0.6, 0, 0.3, 1) forwards;
+}
+.intro-root.signing-off .intro-scan,
+.intro-root.signing-off .intro-grade { opacity: 0; transition: opacity 0.25s ease; }
+
+@keyframes crtOff {
+  0% { transform: scale(1); filter: brightness(1); opacity: 1; }
+  42% { transform: scaleY(0.008) scaleX(1); filter: brightness(3.4); opacity: 1; }
+  62% { transform: scaleY(0.006) scaleX(1); filter: brightness(4); opacity: 1; }
+  100% { transform: scaleY(0.004) scaleX(0); filter: brightness(5); opacity: 0; }
+}
+
+/* the flash the collapsing line throws across the room */
+.intro-root.signing-off .intro-stage { animation: none; opacity: 0; transition: opacity 0.3s ease; }
+
 /* ENTER transition overlay */
 .intro-fade {
   position: absolute;

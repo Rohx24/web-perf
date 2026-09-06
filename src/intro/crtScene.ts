@@ -12,6 +12,7 @@ import {
   MeshBasicMaterial,
   PerspectiveCamera,
   PointLight,
+  Quaternion,
   Scene,
   ShaderMaterial,
   SRGBColorSpace,
@@ -182,6 +183,8 @@ export interface CrtHandle {
   getCam: () => CamState
   /** the full-frame pose that matches how the set is framed in its CSS box */
   matchBox: () => CamState
+  /** square on the glass; coverage = how much of the frame the picture fills */
+  screenPose: (coverage?: number, fov?: number) => CamState
   setCam: (c: CamState) => void
   /** back to the automatic framing that fits the set into its CSS box */
   clearCam: () => void
@@ -237,6 +240,10 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   let disposed = false
   let ready = false
   let norm = new Vector3(1.04, 1, 0.86) // model extents after normalising, filled on load
+  // the glass, in world space — filled once the model loads
+  const screenCentre = new Vector3(0, 0, 0.4)
+  const screenNormal = new Vector3(0, 0, 1)
+  const screenSize = { x: 0.9, y: 0.68, set (a: number, b: number) { this.x = a; this.y = b } }
   let projected = { w: 1.14, h: 1 }
 
   const PUSH = num('push', 1.05) // camera distance multiplier — dollies the set back
@@ -312,12 +319,17 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       cb?.()
       return
     }
+    /* One ease across the WHOLE flight, then straight interpolation between
+       keys. Easing each segment separately made the camera decelerate into
+       every keyframe and pull away again — three stutters in a 2.6s move. */
+    const total = last.t
+    const gt = ease(t / total) * total
     let i = 0
-    while (i < path.length - 1 && path[i + 1].t <= t) i++
+    while (i < path.length - 1 && path[i + 1].t <= gt) i++
     const a = path[i]
     const b = path[Math.min(i + 1, path.length - 1)]
     const span = Math.max(1, b.t - a.t)
-    const k = ease(Math.min(1, Math.max(0, (t - a.t) / span)))
+    const k = Math.min(1, Math.max(0, (gt - a.t) / span))
     manual = {
       px: lerp(a.cam.px, b.cam.px, k), py: lerp(a.cam.py, b.cam.py, k), pz: lerp(a.cam.pz, b.cam.pz, k),
       tx: lerp(a.cam.tx, b.cam.tx, k), ty: lerp(a.cam.ty, b.cam.ty, k), tz: lerp(a.cam.tz, b.cam.tz, k),
@@ -356,6 +368,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     reproject()
 
     let screenPos = new Vector3(0, 0, 0.4)
+    let screenMesh: Mesh | null = null
     root.traverse((o) => {
       const m = o as Mesh
       if (!m.isMesh) return
@@ -367,6 +380,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       if (isScreen) {
         m.material = screenMat
         m.getWorldPosition(screenPos)
+        screenMesh = m
       } else if (DEBUG) {
         // Debug: flat white casing so the silhouette (and which face we're on)
         // is unmistakable at a glance.
@@ -378,6 +392,26 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     // Glow sits just in front of the glass, in pivot space.
     screenGlow.position.set(screenPos.x, screenPos.y, screenPos.z + 0.35)
     pivot.add(screenGlow)
+
+    /* Measure the glass in world space, AFTER the pivot's yaw is in the matrix.
+       The flight used to aim at (0,0,0) — the bounding-box centre, which is
+       buried inside the tube body — and push straight down -Z, while the screen
+       is yawed 22 degrees away from that axis. So the camera drove into the
+       casing instead of squaring up on the picture. */
+    const sm = screenMesh as Mesh | null
+    if (sm) {
+      pivot.updateMatrixWorld(true)
+      sm.getWorldPosition(screenCentre)
+      // the screen quad's own normal is local +Z (decoded from the GLB)
+      screenNormal.set(0, 0, 1).applyQuaternion(sm.getWorldQuaternion(new Quaternion())).normalize()
+      sm.geometry.computeBoundingBox()
+      const bb = sm.geometry.boundingBox
+      if (bb) {
+        const size = bb.getSize(new Vector3())
+        const ws = sm.getWorldScale(new Vector3())
+        screenSize.set(size.x * ws.x, size.y * ws.y)
+      }
+    }
 
     if (DEBUG) scene.add(new AxesHelper(1.2)) // red=+X green=+Y blue=+Z
 
@@ -415,6 +449,26 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       fov: camera.fov,
       ox: manual?.ox ?? 0, oy: manual?.oy ?? 0,
     }),
+    screenPose: (coverage = 1.2, fov = FOV) => {
+      /* Sit on the screen's own normal, looking at the screen's centre, far
+         enough back that the glass covers `coverage` of the frame. Derived from
+         the mesh, so it stays correct whatever the yaw is set to — and every
+         key on this axis means the camera approaches square to the picture
+         instead of swinging past a tube that is yawed away from it. */
+      const w = container.clientWidth || window.innerWidth
+      const h = container.clientHeight || window.innerHeight
+      const aspect = w / Math.max(1, h)
+      const tan = Math.tan((fov * Math.PI) / 360)
+      const dH = screenSize.y / (2 * coverage * tan)
+      const dW = screenSize.x / (2 * coverage * tan * aspect)
+      const d = Math.max(dH, dW)
+      const p = screenCentre.clone().addScaledVector(screenNormal, d)
+      return {
+        px: +p.x.toFixed(4), py: +p.y.toFixed(4), pz: +p.z.toFixed(4),
+        tx: +screenCentre.x.toFixed(4), ty: +screenCentre.y.toFixed(4), tz: +screenCentre.z.toFixed(4),
+        fov, ox: 0, oy: 0,
+      }
+    },
     matchBox: () => {
       /* The pose that reproduces the current framing once the canvas goes
          full-frame. Derived from the box's real rect rather than hard-coded,

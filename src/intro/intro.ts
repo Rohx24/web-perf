@@ -9,14 +9,21 @@ import { createCrtScene, type CamKey, type CrtHandle, type ScreenLine } from './
  * camera, so the flight always starts from exactly what the visitor is
  * looking at rather than a hard-coded guess.
  */
-const ENTER_PATH: CamKey[] = [
-  // Key 0 is NOT listed: it is measured at run time with crt.matchBox() so the
-  // flight always begins on exactly the framing already on screen. Hard-coding
-  // it meant the tube jumped to a new spot the instant ENTER was pressed, which
-  // read as the television moving rather than the camera.
-  { t: 900, cam: { px: 0, py: 0.09, pz: 2.4, tx: 0, ty: 0, tz: 0, fov: 30, ox: 0.12, oy: -0.1 } },
-  { t: 1900, cam: { px: 0, py: 0.03, pz: 1.2, tx: 0, ty: 0, tz: 0, fov: 32, ox: 0, oy: 0 } },
-  { t: 2600, cam: { px: 0, py: 0, pz: 0.62, tx: 0, ty: 0, tz: 0, fov: 36, ox: 0, oy: 0 } },
+/* The flight is built at run time, not hard-coded: key 0 from crt.matchBox()
+   so it starts on exactly the framing already on screen, and every key after it
+   from crt.screenPose() so the camera rides the screen's own normal.
+
+   Hard-coded keys pushed straight down -Z at the model's bounding-box centre —
+   a point buried inside the tube body — while the screen is yawed 22 degrees
+   off that axis. So the camera swung sideways past the set and sheared it into
+   a widescreen slab on the way in. The lens is held constant for the same
+   reason: breathing the fov on approach exaggerates exactly that distortion.
+
+   coverage = how much of the frame height the glass fills at that key. */
+const FLIGHT_KEYS: { t: number; coverage: number }[] = [
+  { t: 950, coverage: 0.46 },
+  { t: 1950, coverage: 0.92 },
+  { t: 2650, coverage: 1.3 },
 ]
 
 /** Copy shown on the tube during the transmission sequence. */
@@ -43,7 +50,7 @@ const MENU = [
  * and menu (left). On ENTER it plays the signal-breakup → "SYSTEM ONLINE"
  * transition, then calls `onEnter` (which lazily mounts the real portfolio).
  */
-export function startIntro (opts: { onEnter: (target: string) => void }) {
+export function startIntro (opts: { onEnter: (target: string) => void; prefetch?: () => void }) {
   const root = document.createElement('div')
   root.className = 'intro-root'
   root.innerHTML = `
@@ -107,7 +114,14 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   // ?cam=1 opens the camera keyframe editor (dev only, lazily loaded).
   if (params.get('cam') === '1') {
     crt.onReady(() =>
-      import('./camrig').then((m) => m.mountCamRig({ root, crt, initial: ENTER_PATH })),
+      import('./camrig').then((m) =>
+        m.mountCamRig({
+          root,
+          crt,
+          // show the editor the same flight the site actually plays
+          initial: FLIGHT_KEYS.map((k) => ({ t: k.t, cam: crt.screenPose(k.coverage) })),
+        }),
+      ),
     )
   }
 
@@ -156,7 +170,6 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   function runEnter (target: string) {
     if (entering) return
     entering = true
-    const fade = root.querySelector('.intro-fade') as HTMLElement
 
     /* 1. Go full-frame. The set normally lives in a 31%-wide box on the plate,
        and you cannot fly a camera through a letterbox. Reparenting the element
@@ -171,8 +184,18 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     root.appendChild(set)
     root.classList.add('flying')
 
-    // 2. Fly, swelling the static as we close on the glass.
-    const flight: CamKey[] = [{ t: 0, cam: key0 }, ...ENTER_PATH]
+    /* Start pulling the site down now. It is only the fetch and parse — nothing
+       mounts yet — so the heavy work is done by the time the transmission ends
+       and the reveal can show a page that is actually ready. */
+    opts.prefetch?.()
+
+    // 2. Fly, swelling the static as we close on the glass. Every key after the
+    //    first sits on the screen's normal, so this is one turn onto the picture
+    //    followed by a straight push along it — no sideways swing, no shear.
+    const flight: CamKey[] = [
+      { t: 0, cam: key0 },
+      ...FLIGHT_KEYS.map((k) => ({ t: k.t, cam: crt.screenPose(k.coverage, key0.fov) })),
+    ]
     const FLIGHT = flight[flight.length - 1].t
     const t0 = performance.now()
     const ramp = () => {
@@ -206,18 +229,19 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
       step()
     }
 
+    /* 4. The hand-off. The site mounts behind the still-lit tube, then the tube
+       switches off the way a CRT actually does — the picture collapses to a
+       bright horizontal line, the line snaps to a point — and the hero is simply
+       already there behind it. Much better than fading through black, and it
+       ends the intro on the same piece of hardware it started on. */
     function handoff () {
-      fade.classList.add('on')
+      opts.onEnter(target)
+      root.classList.add('signing-off')
       window.setTimeout(() => {
-        opts.onEnter(target)
-        // Kill the CRT while the black still covers everything, so its canvas
-        // can never bleed over the portfolio during the reveal.
         crt.dispose()
-        window.setTimeout(() => {
-          root.style.transition = 'opacity 0.9s ease'
-          root.style.opacity = '0'
-          window.setTimeout(cleanup, 950)
-        }, 900)
+        root.style.transition = 'opacity 0.45s ease'
+        root.style.opacity = '0'
+        window.setTimeout(cleanup, 500)
       }, 620)
     }
   }

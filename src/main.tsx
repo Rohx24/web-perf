@@ -12,6 +12,9 @@ if (SKIP) {
   // The CRT title screen shows first; the portfolio is mounted lazily on ENTER,
   // so nothing of the heavy site loads until the visitor chooses to enter.
   startIntro({
+    // warm the chunk during the flight so the reveal lands on a ready page —
+    // this only fetches and parses, nothing mounts until onEnter
+    prefetch: () => { void import('./mountPortfolio') },
     onEnter: (target) => import('./mountPortfolio').then((m) => m.mountPortfolio(root, target)),
   })
 }
