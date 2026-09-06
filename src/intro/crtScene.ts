@@ -103,9 +103,33 @@ function makeScreenTexture () {
      whole intro rather than twenty times a second. */
   const setLines = (lines: ScreenLine[]) => {
     g.clearRect(0, 0, c.width, c.height)
+    if (lines.length === 0) { tex.needsUpdate = true; return }
     g.textAlign = 'center'
     g.textBaseline = 'middle'
     const totalH = lines.reduce((a, l) => a + l.s + l.gap, 0)
+
+    /* A plate under the copy first. The tube shows a lamp lattice over a live,
+       moving page — type laid straight onto that has nothing to sit against and
+       is unreadable whatever colour it is. The plate travels in the same alpha
+       channel as the glyphs, so it darkens the picture behind exactly where the
+       words are and nowhere else. */
+    let py = (c.height - totalH) / 2 + 10
+    for (const l of lines) {
+      py += l.s / 2
+      g.font = `${l.b ? '700' : '500'} ${l.s * 1.55}px "Courier New", ui-monospace, monospace`
+      const wpx = g.measureText(l.t).width
+      const padX = l.s * 1.1
+      const padY = l.s * 0.62
+      const grad = g.createLinearGradient(0, py - l.s - padY, 0, py + l.s + padY)
+      grad.addColorStop(0, 'rgba(2,3,8,0)')
+      grad.addColorStop(0.25, 'rgba(2,3,8,0.88)')
+      grad.addColorStop(0.75, 'rgba(2,3,8,0.88)')
+      grad.addColorStop(1, 'rgba(2,3,8,0)')
+      g.fillStyle = grad
+      g.fillRect((c.width - wpx) / 2 - padX, py - l.s - padY, wpx + padX * 2, (l.s + padY) * 2)
+      py += l.s / 2 + l.gap
+    }
+
     let y = (c.height - totalH) / 2 + 10
     for (const l of lines) {
       y += l.s / 2
@@ -221,8 +245,8 @@ const screenFrag = /* glsl */ `
     float interference = clamp(uChaos * (0.4 + 0.6 * grain), 0.0, 0.95);
 
     // the display: the lattice, torn by interference
-    vec3 col = lamp * lampMask * (1.0 - interference * 0.75);
-    col += vec3(0.62, 0.78, 1.0) * grain * interference * 0.55;
+    vec3 col = lamp * lampMask * (1.0 - interference * 0.75) * (1.0 - ta * 0.92);
+    col += vec3(0.62, 0.78, 1.0) * grain * interference * 0.55 * (1.0 - ta * 0.9);
 
     // the copy and the mark sit ON the display, crisp, the way the contact
     // screen holds "Contact me" over the wall
@@ -241,8 +265,9 @@ const screenFrag = /* glsl */ `
       vec2 ev = suv - 0.5;
       float scan = 0.22 * (0.5 - 0.5 * sin(suv.y * 820.0));
       float vig = smoothstep(0.28, 1.05, dot(ev, ev) * 2.2);
-      float lat = lampMask * 0.18;
-      float noise = interference * 0.6;
+      // lamps and interference both stand off the copy, so it has clean ground
+      float lat = lampMask * 0.18 * (1.0 - ta);
+      float noise = interference * 0.6 * (1.0 - ta * 0.9);
       float a = clamp(scan + vig * 0.92 + lat + ta + noise, 0.0, 1.0);
       float inv = 1.0 / max(a, 0.001);
       vec3 c = vec3(0.0);

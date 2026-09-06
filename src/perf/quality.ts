@@ -27,8 +27,8 @@ export interface Quality {
   dprMax: number
   transmissionScale: number
   showStats: boolean
-  /** 'auto' (from specs), 'url' (forced by ?tier=), or 'default' (fallback). */
-  source: 'default' | 'url' | 'auto'
+  /** 'auto' (specs), 'url' (?tier=), 'saved' (chosen in Settings), 'default'. */
+  source: 'default' | 'url' | 'auto' | 'saved'
   /** Human-readable detection detail for the HUD (GPU string or the rule hit). */
   detected: string
 }
@@ -104,6 +104,24 @@ function readParams(): URLSearchParams {
   return new URLSearchParams(window.location.search)
 }
 
+export const TIER_STORAGE_KEY = 'rd.tier'
+
+/** What the visitor last chose in Settings, if anything. */
+function readSavedTier(): Tier | null {
+  try {
+    const v = localStorage.getItem(TIER_STORAGE_KEY)
+    return v === 'high' || v === 'med' || v === 'low' ? v : null
+  } catch {
+    // private windows and blocked storage both throw on access
+    return null
+  }
+}
+
+/** The tier the specs suggest — Settings' "Auto" option. */
+export function autoTier(): Tier {
+  return detectTier().tier
+}
+
 function resolve(): Quality {
   const params = readParams()
 
@@ -112,16 +130,28 @@ function resolve(): Quality {
   let detected: string
 
   const requested = params.get('tier')
+  const saved = readSavedTier()
   if (requested === 'high' || requested === 'med' || requested === 'low') {
     tier = requested
     source = 'url'
     detected = 'forced by ?tier'
+  } else if (saved) {
+    // The visitor picked one in Settings. Their machine, their call.
+    tier = saved
+    source = 'saved'
+    detected = 'chosen in settings'
   } else {
-    // DEFAULT: auto-select from the device's specs.
-    const auto = detectTier()
-    tier = auto.tier
-    source = 'auto'
-    detected = auto.detected
+    /* DEFAULT: low.
+       This used to auto-detect, and detection kept landing on `high` for
+       machines that could not hold it — a GPU string says nothing about thermal
+       budget or what else the laptop is doing. Low measurably holds framerate
+       on the hardware this was tested on, and AdaptiveQuality raises resolution
+       from the MEASURED frame rate anyway, so a fast machine climbs on its own.
+       Starting low and climbing is the right direction to be wrong in; starting
+       high and stuttering is not. detectTier() is kept for Settings' "Auto". */
+    tier = 'low'
+    source = 'default'
+    detected = 'default: low (changeable in Settings)'
   }
 
   const preset = PRESETS[tier]

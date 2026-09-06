@@ -5,6 +5,7 @@ import { QUALITY, IS_MOBILE } from './perf/quality'
 import { AdaptiveQuality } from './perf/AdaptiveQuality'
 import { INTRO_DPR, introActive, onIntroChange } from './perf/introState'
 import { StatsProbe } from './perf/Stats'
+import { Settings } from './perf/Settings'
 import { GridLayer } from './scene/GridLayer'
 import { MarkerLayer } from './scene/MarkerLayer'
 import { PanelLayer } from './scene/PanelLayer'
@@ -119,6 +120,8 @@ export default function App() {
     <div className="rd-scroll-spacer" style={{ height: `${SCROLL.pages * 100}vh` }} />
     {/* Scroll-synced chrome. */}
     <ProjectOverlay />
+    {/* Quality picker. Default is low; this is how anyone raises it. */}
+    <Settings />
     {/* The WORKS title is no longer a DOM overlay raking across the screen — it
         is an overlay on the LED wall itself, flowing over the colour behind the
         glass logo, driven by scroll from LedWall. See worksInk in ledWallShader. */}
