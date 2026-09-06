@@ -28,6 +28,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { createGlassMaterial } from '../systems/GlassMaterial'
 import { HERO } from '../systems/heroConfig'
+import { drawLedPanel } from '../systems/ledPanel'
 
 const MODEL = '/crt/crt_tv.glb'
 
@@ -97,8 +98,16 @@ function makeScreenTexture () {
   tex.generateMipmaps = false
   tex.wrapS = tex.wrapT = ClampToEdgeWrapping
 
-  const draw = (lines: ScreenLine[]) => {
-    g.clearRect(0, 0, c.width, c.height)
+  let lines: ScreenLine[] = SCREEN_LINES
+
+  /* The tube shows the site's own LED wall, with the copy lit on top of it.
+     It used to be a per-pixel noise shader running every frame at device
+     resolution, which is what made this drag — the wall is ~1200 arcs on a 2D
+     canvas, repainted at 20fps, and it is the look the rest of the site
+     already uses. */
+  const paint = (timeMs: number) => {
+    drawLedPanel(g, c.width, c.height, timeMs, { pitch: 22, radius: 3.0, gain: 0.85 })
+
     g.textAlign = 'center'
     g.textBaseline = 'middle'
     const totalH = lines.reduce((a, l) => a + l.s + l.gap, 0)
@@ -106,14 +115,20 @@ function makeScreenTexture () {
     for (const l of lines) {
       y += l.s / 2
       g.font = `${l.b ? '700' : '500'} ${l.s * 1.55}px "Courier New", ui-monospace, monospace`
+      // a dark plate under each line, so type stays readable over the lamps
+      g.shadowColor = 'rgba(0,0,0,0.85)'
+      g.shadowBlur = 14
       g.fillStyle = l.c
       g.fillText(l.t, c.width / 2, y)
+      g.shadowBlur = 0
       y += l.s / 2 + l.gap
     }
     tex.needsUpdate = true
   }
-  draw(SCREEN_LINES)
-  return { tex, draw }
+
+  const setLines = (next: ScreenLine[]) => { lines = next }
+  paint(0)
+  return { tex, paint, setLines }
 }
 
 const screenVert = /* glsl */ `
@@ -171,27 +186,16 @@ const screenFrag = /* glsl */ `
     if (cuv.x < 0.0 || cuv.x > 1.0 || cuv.y < 0.0 || cuv.y > 1.0) cont = vec4(0.0);
     float lock = cont.a * uContentMix;
 
-    // Dense two-scale snow, swelling during ENTER until it eats the signal.
-    // Gamma'd so it speckles instead of laying down a flat blue veil that
-    // would drown the copy.
-    float s1 = hash(suv * vec2(540.0, 400.0) + uTime * 61.0);
-    float s2 = hash(suv * vec2(160.0, 690.0) - uTime * 37.0);
-    float snow = pow(mix(s1, s2, 0.35), 2.0);
-    // whole scan rows brighten and dim together → horizontal streaking
-    float row = hash(vec2(floor(suv.y * 240.0), floor(uTime * 22.0)));
-    snow *= 0.62 + 0.6 * row;
-    // hunting for the channel: the picture tears and the snow thickens
-    snow *= 1.0 + uChaos * 1.15;
+    /* A single cheap grain on top, not a snow field. The wall carries the
+       picture now, so this only has to sell interference — the old two-scale
+       gamma'd noise with per-row streaking was four hashes a pixel every frame
+       at device resolution, and it was the single most expensive thing here. */
+    float grain = hash(suv * 620.0 + uTime * 60.0);
+    float interference = uChaos * (0.35 + 0.65 * grain) + uEnter * 0.18 * grain;
 
-    vec3 tube = vec3(0.022, 0.038, 0.085);
-    vec3 snowCol = mix(vec3(0.20, 0.50, 0.95), vec3(0.82, 0.92, 1.0), snow);
-    /* The copy has to survive the worst of the interference, so the snow is
-       held back hard wherever type is and the type does NOT dim as uEnter
-       climbs. Both were the wrong way round: the snow gained 2.4x while the
-       text lost 1.4x, which is why CHANNEL LOCKED blew out into an unreadable
-       white field exactly at the peak. */
-    vec3 col = tube + snowCol * snow * (0.78 + uEnter * 0.85) * (1.0 - ta * 0.9) * (1.0 - lock);
-    col += vec3(tr, tg, tb) * ta * 1.95 * (1.0 - uContentMix);
+    vec3 wall = vec3(tr, tg, tb);
+    vec3 col = mix(wall, vec3(0.62, 0.78, 1.0) * grain, clamp(interference, 0.0, 0.92));
+    col *= 1.0 - uContentMix * 0.55;          // the wall dims under the mark
     col += cont.rgb * lock;
 
     // the tube's own artefacts back off wherever the mark is
@@ -417,6 +421,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   })
   postScene.add(new Mesh(new PlaneGeometry(2, 2), postMat))
   let warp = 0
+  let lastLed = 0
 
   /* The projection: the tube's picture drawn straight onto the viewport, with
      no model and no camera involved at all. Pressing ENTER cuts to this rather
@@ -637,6 +642,10 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     const now = performance.now()
     if (path) stepPath(now)
     const t = now * 0.001
+
+    // the wall repaints at ~20fps, as it does in the abyss — it is a 2D canvas
+    // upload, not something that needs to keep up with the render loop
+    if (now - lastLed > 50) { lastLed = now; screen.paint(now) }
     screenMat.uniforms.uTime.value = t
     // the tube's own light, so a pulse throws itself across the room too
     screenGlow.intensity =
@@ -690,7 +699,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   return {
     setEnter: (v: number) => { screenMat.uniforms.uEnter.value = v },
     onReady: (cb) => { if (ready) cb(); else readyCbs.push(cb) },
-    setScreenText: (lines: ScreenLine[]) => screen.draw(lines),
+    setScreenText: (lines: ScreenLine[]) => screen.setLines(lines),
     setChaos: (v: number) => { screenMat.uniforms.uChaos.value = v },
     setProjection: (on: boolean) => { projection = on },
     setFlash: (v: number) => { screenMat.uniforms.uFlash.value = v },

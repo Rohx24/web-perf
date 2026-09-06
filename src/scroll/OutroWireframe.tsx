@@ -5,6 +5,7 @@ import { LIVE } from '../dev/live'
 import { scrambleAll } from './scramble'
 import { CrtLedScreen } from './CrtLedScreen'
 import { IS_MOBILE } from '../perf/quality'
+import { drawLedPanel } from '../systems/ledPanel'
 
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x))
@@ -225,14 +226,10 @@ export function OutroWireframe() {
       drawCrtNoise()
     }
 
-    // The LED wall behind the CRT — a dot matrix running colour fields, the hero
-    // wall's vibe recreated in 2D (violet / cyan / orange / pink, no green).
-    const PAL = [
-      [139, 109, 255],
-      [34, 211, 238],
-      [245, 158, 11],
-      [236, 72, 153],
-    ]
+    /* The LED wall behind the CRT. The drawing itself now lives in
+       systems/ledPanel so the intro's tube runs the identical wall instead of a
+       lookalike — same pitch, same ramp, same sines. Nothing about how this
+       looks has changed; it just has one definition now. */
     function sizeLed() {
       if (!led) return
       led.width = Math.max(1, led.offsetWidth)
@@ -240,38 +237,7 @@ export function OutroWireframe() {
     }
     function drawLed(time: number) {
       if (!led || !lctx) return
-      const w = led.width
-      const h = led.height
-      if (w < 2 || h < 2) return
-      lctx.clearRect(0, 0, w, h)
-      const pitch = 26
-      const r = 3.4
-      const t = time * 0.001
-      for (let y = pitch / 2; y < h; y += pitch) {
-        for (let x = pitch / 2; x < w; x += pitch) {
-          const u = x / w
-          const v = y / h
-          const f =
-            (Math.sin(u * 5 + t * 1.6) +
-              Math.sin(v * 3.5 - t * 1.1) +
-              Math.sin((u + v) * 4 + t * 0.7)) /
-            3
-          const g = (f * 0.5 + 0.5) * PAL.length
-          const i0 = Math.floor(g) % PAL.length
-          const i1 = (i0 + 1) % PAL.length
-          const fr = g - Math.floor(g)
-          const c0 = PAL[i0]
-          const c1 = PAL[i1]
-          const bright = 0.35 + 0.65 * (Math.sin(u * 11 + v * 9 + t * 3) * 0.5 + 0.5)
-          const R = (c0[0] + (c1[0] - c0[0]) * fr) * bright
-          const G = (c0[1] + (c1[1] - c0[1]) * fr) * bright
-          const B = (c0[2] + (c1[2] - c0[2]) * fr) * bright
-          lctx.fillStyle = `rgb(${R | 0},${G | 0},${B | 0})`
-          lctx.beginPath()
-          lctx.arc(x, y, r, 0, Math.PI * 2)
-          lctx.fill()
-        }
-      }
+      drawLedPanel(lctx, led.width, led.height, time)
     }
     sizeLed()
     let ledTick = 0
