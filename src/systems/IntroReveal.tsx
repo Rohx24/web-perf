@@ -85,7 +85,7 @@ const DURATION = 3000
 const easeOutCubic = (x: number) => 1 - Math.pow(1 - x, 3)
 
 export function IntroReveal() {
-  const { size, viewport } = useThree()
+  const { size, viewport, gl, scene, camera } = useThree()
   // Nothing to reveal if the visitor never saw a title screen (?noboot=1).
   const [running, setRunning] = useState(() => introActive())
   const startedAt = useRef<number | null>(null)
@@ -117,6 +117,62 @@ export function IntroReveal() {
   }, [])
 
   useEffect(() => () => { rt.dispose(); mat.dispose() }, [rt, mat])
+
+  /* Compile the render-target path while the title screen still covers the
+     screen.
+
+     three keys shader programs on more than the material — rendering into a
+     render target is not the same pipeline as rendering to the canvas, so the
+     first frame that goes through this pass recompiles every material in the
+     scene. That compile landed exactly on the first frame of the reveal, which
+     is why the reveal stalled for about a second and then ran smoothly.
+
+     Doing one throwaway render through the same path up front moves that
+     compile under the intro, where there is nothing to stutter. The composite
+     material gets a frame too, so its own program is built here rather than
+     there. gl.compile is repeated on a delay to catch anything whose material
+     was still being set up on the first pass. */
+  useEffect(() => {
+    let cancelled = false
+    const warm = () => {
+      if (cancelled) return
+      /* Everything visible for the duration of the warm renders.
+
+         gl.compile covers the canvas path, but not every path a material can
+         end up on. The hero's mark is transmissive, so three renders a
+         transmission pass every frame — and an object entering that pass for
+         the first time compiles there too. Nothing off-screen is in it, so the
+         works panes were compiling on the frame they first appeared, which is
+         the stall on the first scroll off the hero. Rendering them for real,
+         once, while they are hidden behind the title screen, is what actually
+         exercises those paths; compiling alone does not. */
+      const hidden: { o: { visible: boolean } }[] = []
+      scene.traverse((o) => {
+        if (o.visible === false) { hidden.push({ o }); o.visible = true }
+      })
+      try {
+        // the canvas path, and with it the transmission pass
+        gl.render(scene, camera)
+        // and the render-target path the reveal itself runs on
+        gl.setRenderTarget(rt)
+        gl.render(scene, camera)
+        gl.setRenderTarget(null)
+        mat.uniforms.uBackBuffer.value = rt.texture
+        mat.uniforms.uLoaded.value = 0
+        gl.render(quad, cam)
+        gl.compile(scene, camera)
+      } catch {
+        /* best-effort: if it throws, the compile just happens later, where it
+           always used to */
+      } finally {
+        for (const h of hidden) h.o.visible = false
+      }
+    }
+    warm()
+    const again = window.setTimeout(warm, 1200)
+    return () => { cancelled = true; window.clearTimeout(again) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const pr = Math.min(viewport.dpr, 2)
