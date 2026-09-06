@@ -28,7 +28,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { createGlassMaterial } from '../systems/GlassMaterial'
 import { HERO } from '../systems/heroConfig'
-import { drawLedPanel } from '../systems/ledPanel'
 
 const MODEL = '/crt/crt_tv.glb'
 
@@ -98,16 +97,12 @@ function makeScreenTexture () {
   tex.generateMipmaps = false
   tex.wrapS = tex.wrapT = ClampToEdgeWrapping
 
-  let lines: ScreenLine[] = SCREEN_LINES
-
-  /* The tube shows the site's own LED wall, with the copy lit on top of it.
-     It used to be a per-pixel noise shader running every frame at device
-     resolution, which is what made this drag — the wall is ~1200 arcs on a 2D
-     canvas, repainted at 20fps, and it is the look the rest of the site
-     already uses. */
-  const paint = (timeMs: number) => {
-    drawLedPanel(g, c.width, c.height, timeMs, { pitch: 22, radius: 3.0, gain: 0.85 })
-
+  /* Copy only, on a transparent ground, redrawn ONLY when the words change.
+     The lattice underneath is computed per fragment in the shader, the way the
+     hero wall does it — so this canvas is uploaded a handful of times for the
+     whole intro rather than twenty times a second. */
+  const setLines = (lines: ScreenLine[]) => {
+    g.clearRect(0, 0, c.width, c.height)
     g.textAlign = 'center'
     g.textBaseline = 'middle'
     const totalH = lines.reduce((a, l) => a + l.s + l.gap, 0)
@@ -115,20 +110,14 @@ function makeScreenTexture () {
     for (const l of lines) {
       y += l.s / 2
       g.font = `${l.b ? '700' : '500'} ${l.s * 1.55}px "Courier New", ui-monospace, monospace`
-      // a dark plate under each line, so type stays readable over the lamps
-      g.shadowColor = 'rgba(0,0,0,0.85)'
-      g.shadowBlur = 14
       g.fillStyle = l.c
       g.fillText(l.t, c.width / 2, y)
-      g.shadowBlur = 0
       y += l.s / 2 + l.gap
     }
     tex.needsUpdate = true
   }
-
-  const setLines = (next: ScreenLine[]) => { lines = next }
-  paint(0)
-  return { tex, paint, setLines }
+  setLines(SCREEN_LINES)
+  return { tex, setLines }
 }
 
 const screenVert = /* glsl */ `
@@ -144,9 +133,16 @@ const screenFrag = /* glsl */ `
   uniform float uContentMix; // 0 = copy on the tube, 1 = the model on the tube
   uniform float uFlash;      // tube blowing out — the channel-change pulses
   uniform float uDispAspect; // aspect of the surface being drawn on
+  uniform float uLedPitch;   // lamps across the display
   uniform sampler2D uText;
   uniform sampler2D uContent;
   varying vec2 vUv;
+
+  // the wall's ramp: violet / cyan / amber / pink, no green
+  const vec3 VIOLET = vec3(0.545, 0.427, 1.0);
+  const vec3 CYAN   = vec3(0.133, 0.827, 0.933);
+  const vec3 AMBER  = vec3(0.961, 0.620, 0.043);
+  const vec3 PINK   = vec3(0.925, 0.282, 0.600);
 
   float hash (vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 
@@ -186,17 +182,51 @@ const screenFrag = /* glsl */ `
     if (cuv.x < 0.0 || cuv.x > 1.0 || cuv.y < 0.0 || cuv.y > 1.0) cont = vec4(0.0);
     float lock = cont.a * uContentMix;
 
-    /* A single cheap grain on top, not a snow field. The wall carries the
-       picture now, so this only has to sell interference — the old two-scale
-       gamma'd noise with per-row streaking was four hashes a pixel every frame
-       at device resolution, and it was the single most expensive thing here. */
-    float grain = hash(suv * 620.0 + uTime * 60.0);
-    float interference = uChaos * (0.35 + 0.65 * grain) + uEnter * 0.18 * grain;
+    /* THE DISPLAY.
 
-    vec3 wall = vec3(tr, tg, tb);
-    vec3 col = mix(wall, vec3(0.62, 0.78, 1.0) * grain, clamp(interference, 0.0, 0.92));
-    col *= 1.0 - uContentMix * 0.55;          // the wall dims under the mark
-    col += cont.rgb * lock;
+       The wall's own technique, ported: no dot geometry and no canvas arcs —
+       work out which cell of the lattice this pixel is in, measure its distance
+       from that cell's centre, and let fwidth antialias the edge. One shader,
+       one draw, and the dots stay perfectly round at any resolution. Drawing
+       ~1200 arcs onto a canvas twenty times a second, or a per-pixel noise
+       field sixty times a second, were both far more work than this.
+
+       uLedPitch scales the lattice down without touching anything else. */
+    vec2 cells = vec2(uLedPitch, uLedPitch / max(0.2, uDispAspect));
+    vec2 cellUv = fract(suv * cells) - 0.5;
+    vec2 cellCentre = (floor(suv * cells) + 0.5) / cells;
+
+    // the wall's colour programme, sampled once per cell so a lamp is one colour
+    float u2 = cellCentre.x;
+    float v2 = cellCentre.y;
+    float f =
+      (sin(u2 * 5.0 + uTime * 1.6) +
+       sin(v2 * 3.5 - uTime * 1.1) +
+       sin((u2 + v2) * 4.0 + uTime * 0.7)) / 3.0;
+    float ramp = (f * 0.5 + 0.5) * 4.0;
+    int i0 = int(mod(floor(ramp), 4.0));
+    vec3 c0 = i0 == 0 ? VIOLET : i0 == 1 ? CYAN : i0 == 2 ? AMBER : PINK;
+    int i1 = int(mod(floor(ramp) + 1.0, 4.0));
+    vec3 c1 = i1 == 0 ? VIOLET : i1 == 1 ? CYAN : i1 == 2 ? AMBER : PINK;
+    float lampBright = 0.35 + 0.65 * (sin(u2 * 11.0 + v2 * 9.0 + uTime * 3.0) * 0.5 + 0.5);
+    vec3 lamp = mix(c0, c1, fract(ramp)) * lampBright;
+
+    // the lamp itself — round, antialiased by the pixel's own footprint
+    float d = length(cellUv);
+    float fw = max(fwidth(d), 0.0008);
+    float lampMask = 1.0 - smoothstep(0.30 - fw, 0.30 + fw, d);
+
+    float grain = hash(suv * 620.0 + uTime * 60.0);
+    float interference = clamp(uChaos * (0.4 + 0.6 * grain), 0.0, 0.95);
+
+    // the display: the lattice, torn by interference
+    vec3 col = lamp * lampMask * (1.0 - interference * 0.75);
+    col += vec3(0.62, 0.78, 1.0) * grain * interference * 0.55;
+
+    // the copy and the mark sit ON the display, crisp, the way the contact
+    // screen holds "Contact me" over the wall
+    col = mix(col, vec3(tr, tg, tb), ta * (1.0 - uContentMix));
+    col = mix(col, cont.rgb, lock);
 
     // the tube's own artefacts back off wherever the mark is
     col *= mix(0.80 + 0.20 * sin(suv.y * 820.0), 1.0, lock * 0.85);   // scanlines
@@ -394,6 +424,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       uContentMix: { value: 0 },
       uFlash: { value: 0 },
       uDispAspect: { value: 1.3128 },
+      uLedPitch: { value: num('leds', 74) },
       uText: { value: screen.tex },
       uContent: { value: contentRT.texture },
     },
@@ -421,7 +452,6 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   })
   postScene.add(new Mesh(new PlaneGeometry(2, 2), postMat))
   let warp = 0
-  let lastLed = 0
 
   /* The projection: the tube's picture drawn straight onto the viewport, with
      no model and no camera involved at all. Pressing ENTER cuts to this rather
@@ -643,9 +673,6 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     if (path) stepPath(now)
     const t = now * 0.001
 
-    // the wall repaints at ~20fps, as it does in the abyss — it is a 2D canvas
-    // upload, not something that needs to keep up with the render loop
-    if (now - lastLed > 50) { lastLed = now; screen.paint(now) }
     screenMat.uniforms.uTime.value = t
     // the tube's own light, so a pulse throws itself across the room too
     screenGlow.intensity =
