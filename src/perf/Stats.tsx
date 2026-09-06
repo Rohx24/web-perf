@@ -30,7 +30,17 @@ const FPS_CEIL = 120 // top of the graph
 
 export function StatsProbe() {
   const gl = useThree((state) => state.gl)
+  const scene = useThree((state) => state.scene)
+  const camera = useThree((state) => state.camera)
   const ctx = useRef<CanvasRenderingContext2D | null>(null)
+
+  /* A handle on the live scene from the console, so "what is actually being
+     drawn" is a question that can be answered by looking instead of guessing.
+     Only under ?stats=1, alongside the HUD. */
+  useEffect(() => {
+    ;(window as unknown as Record<string, unknown>).__rd = { gl, scene, camera }
+    return () => { delete (window as unknown as Record<string, unknown>).__rd }
+  }, [gl, scene, camera])
 
   const samples = useRef<Float32Array>(new Float32Array(GRAPH_W))
   const head = useRef(0)
