@@ -7,7 +7,13 @@ import { MathUtils } from 'three'
  * exactly as authored.
  */
 export const HERO = {
-  url: '/models/metal-letter-opt.glb',
+  /* ?hero=/models/metal-letter-20.glb swaps the mark for a decimated build, so
+     densities can be compared in the real material and lighting rather than in
+     a viewer. Dev affordance only; nothing reads it in normal use. */
+  url:
+    (typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('hero')) ||
+    '/models/metal-letter-opt.glb',
 
   /**
    * On the camera's view axis, set back into the room so the wall sits close

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hero mark — density comparison</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #08080a;
+        color: #e8e6e1;
+        font: 13px/1.5 ui-monospace, Menlo, monospace;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+      header {
+        padding: 14px 20px 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      h1 { margin: 0 0 3px; font-size: 14px; letter-spacing: 0.04em; }
+      header p { margin: 0; color: #7d8288; font-size: 12px; }
+      #stage { flex: 1; width: 100%; display: block; min-height: 0; }
+      #readout {
+        display: flex;
+        gap: 18px;
+        align-items: baseline;
+        padding: 10px 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      #readout b { color: #e9c76b; font-size: 15px; min-width: 62px; }
+      #readout span { color: #9aa0a6; }
+      #readout .win { color: #4caf7d; margin-left: auto; }
+      #readout .base { color: #7d8288; margin-left: auto; }
+      #strip { display: flex; gap: 8px; padding: 12px 20px 16px; }
+      #strip button {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 9px 4px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+        color: #9aa0a6;
+        font: inherit;
+        cursor: pointer;
+      }
+      #strip button:hover { background: rgba(255, 255, 255, 0.08); }
+      #strip button.on { border-color: #c9a24b; background: rgba(201, 162, 75, 0.14); color: #e9c76b; }
+      #strip b { font-size: 13px; }
+      #strip span { font-size: 11px; opacity: 0.75; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Hero mark — density comparison</h1>
+      <p>Real glass material, real lighting, real camera. Click a build or use ← / →.</p>
+    </header>
+    <canvas id="stage"></canvas>
+    <div id="readout"></div>
+    <div id="strip"></div>
+    <script type="module" src="/src/dev/compare.ts"></script>
+  </body>
+</html>
