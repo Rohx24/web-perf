@@ -9,7 +9,7 @@ import {
   WebGLRenderTarget,
 } from 'three'
 
-import { introActive, onIntroChange } from '../perf/introState'
+import { introActive, onIntroChange, setRevealDone } from '../perf/introState'
 
 /**
  * The reveal, run on the page's own composite — which is where Alche run
@@ -88,6 +88,9 @@ export function IntroReveal() {
   const { size, viewport, gl, scene, camera } = useThree()
   // Nothing to reveal if the visitor never saw a title screen (?noboot=1).
   const [running, setRunning] = useState(() => introActive())
+  // ?noboot=1 never runs a reveal, so nothing would otherwise release the
+  // resolution it is holding down
+  useEffect(() => { if (!introActive()) setRevealDone() }, [])
   const startedAt = useRef<number | null>(null)
 
   useEffect(() => onIntroChange((stillUp) => {
@@ -169,16 +172,24 @@ export function IntroReveal() {
       }
     }
     warm()
-    const again = window.setTimeout(warm, 1200)
+    // a compile-only second pass: the first one did the expensive part, this
+    // just catches anything whose material was still being built
+    const again = window.setTimeout(() => {
+      if (!cancelled) { try { gl.compile(scene, camera) } catch { /* best effort */ } }
+    }, 1200)
     return () => { cancelled = true; window.clearTimeout(again) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
+    mat.uniforms.uScreenAspectRatio.value = size.width / Math.max(1, size.height)
+    /* Once the reveal is over this target is dead weight — and the resolution
+       it was holding down goes up at the same moment, so without this guard it
+       would reallocate at full size purely to never be read again. */
+    if (!running) { rt.setSize(2, 2); return }
     const pr = Math.min(viewport.dpr, 2)
     rt.setSize(Math.max(2, Math.round(size.width * pr)), Math.max(2, Math.round(size.height * pr)))
-    mat.uniforms.uScreenAspectRatio.value = size.width / Math.max(1, size.height)
-  }, [size, viewport.dpr, rt, mat])
+  }, [size, viewport.dpr, rt, mat, running])
 
   /* Priority > 0 takes the render loop off R3F, so the scene can be captured
      first and composited second. When this unmounts, R3F resumes its own
@@ -200,7 +211,13 @@ export function IntroReveal() {
     mat.uniforms.uBackBuffer.value = rt.texture
     gl.render(quad, cam)
 
-    if (p >= 1) setRunning(false)
+    if (p >= 1) {
+      setRunning(false)
+      /* Raising resolution resizes the drawing buffer, which is itself a hitch.
+         Landing it on the reveal's last frame would put a stutter exactly where
+         the eye is still following the wipe. A beat later, nothing is moving. */
+      window.setTimeout(setRevealDone, 250)
+    }
   }, 1)
 
   return null

@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Preload } from '@react-three/drei'
 import { QUALITY, IS_MOBILE } from './perf/quality'
 import { AdaptiveQuality } from './perf/AdaptiveQuality'
-import { INTRO_DPR, introActive, onIntroChange } from './perf/introState'
+import { INTRO_DPR, onRevealDone, revealDone } from './perf/introState'
 import { StatsProbe } from './perf/Stats'
 import { GridLayer } from './scene/GridLayer'
 import { MarkerLayer } from './scene/MarkerLayer'
@@ -42,11 +42,8 @@ export default function App() {
      television, so it renders at a fraction of the pixels — that is what makes
      mounting it up front affordable. It goes to the tier ceiling the moment the
      intro lets go, and AdaptiveQuality takes over from there. */
-  const [dpr, setDpr] = useState(introActive() ? INTRO_DPR : QUALITY.dprMax)
-  useEffect(
-    () => onIntroChange((stillUp) => setDpr(stillUp ? INTRO_DPR : QUALITY.dprMax)),
-    [],
-  )
+  const [dpr, setDpr] = useState(revealDone() ? QUALITY.dprMax : INTRO_DPR)
+  useEffect(() => onRevealDone(() => setDpr(QUALITY.dprMax)), [])
 
   return (
     <>

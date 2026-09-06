@@ -28,3 +28,30 @@ export function onIntroChange (fn: (v: boolean) => void): () => void {
 
 /** Pixel-density ceiling while the hero is only ever seen inside the tube. */
 export const INTRO_DPR = 0.55
+
+/* ---- the reveal ---------------------------------------------------------
+   Separate from the intro because they end at different times, and the gap
+   between them matters: the reveal renders the scene into a target and then
+   composites it, so it costs about twice a normal frame for its whole run —
+   on top of the transmission pass the hero already pays for.
+
+   Raising resolution at the START of that was the wrong moment for it. The
+   heaviest three seconds on the site were being handed the biggest jump in
+   pixel count at the same instant. Resolution now waits for the reveal to
+   finish. */
+let revealed = false
+const revealListeners = new Set<() => void>()
+
+export const revealDone = () => revealed
+
+export function setRevealDone(): void {
+  if (revealed) return
+  revealed = true
+  revealListeners.forEach((fn) => fn())
+}
+
+export function onRevealDone(fn: () => void): () => void {
+  if (revealed) { fn(); return () => {} }
+  revealListeners.add(fn)
+  return () => revealListeners.delete(fn)
+}
