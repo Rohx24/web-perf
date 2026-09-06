@@ -6,14 +6,20 @@ import {
   CanvasTexture,
   ClampToEdgeWrapping,
   DirectionalLight,
+  EquirectangularReflectionMapping,
   Group,
   LinearFilter,
   Mesh,
   MeshBasicMaterial,
+  MeshPhysicalMaterial,
   PerspectiveCamera,
+  OrthographicCamera,
+  PlaneGeometry,
+  PMREMGenerator,
   PointLight,
   Quaternion,
   Scene,
+  WebGLRenderTarget,
   ShaderMaterial,
   SRGBColorSpace,
   Vector3,
@@ -118,7 +124,10 @@ const screenFrag = /* glsl */ `
   precision highp float;
   uniform float uTime;
   uniform float uEnter;      // 0..1 signal breakup
+  uniform float uChaos;      // extra interference while the channel is hunted
+  uniform float uContentMix; // 0 = copy on the tube, 1 = the model on the tube
   uniform sampler2D uText;
+  uniform sampler2D uContent;
   varying vec2 vUv;
 
   float hash (vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -136,11 +145,18 @@ const screenFrag = /* glsl */ `
     suv.x += tear * jit * (0.028 + uEnter * 0.10);
 
     // Text, with RGB separation.
-    float sep = 0.0022 + uEnter * 0.012;
+    float sep = 0.0022 + uEnter * 0.012 + uChaos * 0.02;
     float tr = texture2D(uText, suv + vec2(sep, 0.0)).r;
     float tg = texture2D(uText, suv).g;
     float tb = texture2D(uText, suv - vec2(sep, 0.0)).b;
     float ta = texture2D(uText, suv).a;
+
+    /* The broadcast that locks on: the hero's own mark, rendered live into its
+       own buffer. Sampled clean — no split, no snow, no scanline over it. It is
+       meant to be the same object the page shows a moment later, so anything
+       done to it here is a difference the reveal would have to undo. */
+    vec4 cont = texture2D(uContent, suv);
+    float lock = cont.a * uContentMix;
 
     // Dense two-scale snow, swelling during ENTER until it eats the signal.
     // Gamma'd so it speckles instead of laying down a flat blue veil that
@@ -151,16 +167,20 @@ const screenFrag = /* glsl */ `
     // whole scan rows brighten and dim together → horizontal streaking
     float row = hash(vec2(floor(suv.y * 240.0), floor(uTime * 22.0)));
     snow *= 0.62 + 0.6 * row;
+    // hunting for the channel: the picture tears and the snow doubles
+    snow *= 1.0 + uChaos * 2.2;
 
     vec3 tube = vec3(0.022, 0.038, 0.085);
     vec3 snowCol = mix(vec3(0.20, 0.50, 0.95), vec3(0.82, 0.92, 1.0), snow);
     // The signal burns through the snow where the copy is, so the text stays
     // readable instead of being chewed up by the streaking.
-    vec3 col = tube + snowCol * snow * (0.78 + uEnter * 2.4) * (1.0 - ta * 0.6);
-    col += vec3(tr, tg, tb) * ta * (1.9 - uEnter * 1.4);
+    vec3 col = tube + snowCol * snow * (0.78 + uEnter * 2.4) * (1.0 - ta * 0.6) * (1.0 - lock);
+    col += vec3(tr, tg, tb) * ta * (1.9 - uEnter * 1.4) * (1.0 - uContentMix);
+    col += cont.rgb * lock;
 
-    col *= 0.80 + 0.20 * sin(suv.y * 820.0);                     // scanlines
-    col *= 0.95 + 0.05 * sin(uTime * 31.0) + uEnter * 0.85;      // flicker + surge
+    // the tube's own artefacts back off wherever the mark is
+    col *= mix(0.80 + 0.20 * sin(suv.y * 820.0), 1.0, lock * 0.85);   // scanlines
+    col *= mix(0.95 + 0.05 * sin(uTime * 31.0) + uEnter * 0.85, 1.0, lock * 0.85);
     col *= vec3(0.84, 0.94, 1.12);                               // cold tube cast
 
     // Glass falloff. Written as 1.0 - smoothstep(lo, hi, d): smoothstep with
@@ -173,12 +193,84 @@ const screenFrag = /* glsl */ `
   }
 `
 
+const quadVert = /* glsl */ `
+  varying vec2 vUv;
+  void main () { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
+`
+
+/* The sign-off warp. Alche do this as a glass mesh refracting a screen-space
+   capture of the page; the giveaway in their mainLogoFrag is that R, G and B
+   are sampled at 1x, 2x and 4x the SAME offset rather than a symmetric split,
+   which is what gives the edges that rainbow smear. This is the same idea run
+   as one full-screen pass over the intro's own render, which costs a single
+   quad instead of a refracting mesh and a cube map. */
+const warpFrag = /* glsl */ `
+  precision highp float;
+  uniform sampler2D uTex;
+  uniform float uProg;
+  uniform vec2 uRes;
+  uniform vec2 uCenter;   // where the glass is on screen, in uv
+  varying vec2 vUv;
+
+  void main () {
+    float asp = uRes.x / max(1.0, uRes.y);
+    // measured from the glass, not the middle of the window — the bubble has to
+    // look like it came out of the tube
+    vec2 c = vUv - uCenter;
+    c.x *= asp;
+    float d = length(c);
+    vec2 dir = d > 0.0001 ? c / d : vec2(0.0);
+
+    float p = clamp(uProg, 0.0, 1.0);
+    // the front races outward, well past the corners
+    float R = p * 2.3;
+    // 1 well inside the bubble, 0 outside; the transition band is the skin
+    float inside = smoothstep(R, R - 0.30, d);
+    // a bright travelling skin at the wavefront
+    float shell = exp(-pow((d - R) * 5.5, 2.0));
+    // and everything relaxes as it finishes, so the picture settles flat
+    float settle = 1.0 - smoothstep(0.68, 1.0, p);
+
+    // the lens: magnifies what is inside the bubble, strongest near the front
+    vec2 warped = c * (1.0 - inside * settle * 0.34 / (1.0 + d * d * 2.6));
+    // the wave riding out with it
+    warped += dir * sin(d * 22.0 - p * 24.0) * 0.016 * settle * (inside * 0.6 + shell);
+    warped.x /= asp;
+    vec2 uv = warped + uCenter;
+
+    /* Chromatic split, concentrated on the skin — the three channels at 1x, 2x
+       and 4x the same offset, which is the asymmetry that makes it read as
+       glass rather than a symmetric rainbow. */
+    float ab = (shell * 0.9 + inside * 0.22) * 0.018 * settle;
+    vec2 d2 = vec2(dir.x / asp, dir.y);
+    vec4 cr = texture2D(uTex, uv - d2 * ab);
+    vec4 cg = texture2D(uTex, uv - d2 * ab * 2.0);
+    vec4 cb = texture2D(uTex, uv - d2 * ab * 4.0);
+    vec3 col = vec3(cr.r, cg.g, cb.b);
+    float a = max(cr.a, max(cg.a, cb.a));
+
+    // the wavefront itself glows
+    col += vec3(0.62, 0.76, 1.0) * shell * 0.85 * settle;
+    a = max(a, shell * 0.85 * settle);
+
+    gl_FragColor = vec4(col, a);
+  }
+`
+
 export interface CrtHandle {
   setEnter: (v: number) => void
   dispose: () => void
   onReady: (cb: () => void) => void
-  /** replace the copy on the tube (SIGNAL LOST, SYSTEM ONLINE, …) */
+  /** replace the copy on the tube */
   setScreenText: (lines: ScreenLine[]) => void
+  /** interference while the channel is being hunted, 0..1 */
+  setChaos: (v: number) => void
+  /** crossfade the tube from type to the live model, 0..1 */
+  setContentMix: (v: number) => void
+  /** the spherical sign-off warp, 0..1 */
+  setWarp: (v: number) => void
+  /** pull the hero's model in for the tube (also warms it for the page) */
+  loadContent: () => Promise<boolean>
   /** camera rig — used by the ?cam=1 keyframe editor and the ENTER flight */
   getCam: () => CamState
   /** the full-frame pose that matches how the set is framed in its CSS box */
@@ -222,13 +314,84 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   const screenGlow = new PointLight(0x74a0ff, 2.0, 4, 2)
   scene.add(screenGlow)
 
+  /* ---- the tube's live content channel -------------------------------
+     A second, tiny scene rendered to its own buffer and handed to the screen
+     shader, so the broadcast can lock onto the RD letter instead of only ever
+     showing type. 512x390 matches the glass aspect (1.313) so nothing skews.
+     The model is the same file the hero uses, so pulling it here warms the
+     cache for the page we are about to reveal rather than costing an extra
+     download. */
+  const contentRT = new WebGLRenderTarget(512, 390)
+  const contentScene = new Scene()
+  const contentCam = new PerspectiveCamera(30, 512 / 390, 0.1, 50)
+  contentCam.position.set(0, 0, 3.2)
+  contentScene.add(new AmbientLight(0x8a93c8, 1.1))
+  const cKey = new DirectionalLight(0xffc0e0, 2.6)
+  cKey.position.set(2.4, 2, 3)
+  contentScene.add(cKey)
+  const cRim = new DirectionalLight(0x8fb4ff, 2.2)
+  cRim.position.set(-3, 1.2, -2)
+  contentScene.add(cRim)
+
+  /* The hero's mark is cast crystal with full transmission, and transmission
+     has nothing to refract without an environment — drop it in a bare scene and
+     it renders as a black silhouette. This is the wall's own ramp as an
+     equirect gradient, run through PMREM, which is what lets the same material
+     read here the way it reads on the page. */
+  const envCanvas = document.createElement('canvas')
+  envCanvas.width = 64
+  envCanvas.height = 32
+  {
+    const g = envCanvas.getContext('2d')!
+    const grad = g.createLinearGradient(0, 0, 0, 32)
+    grad.addColorStop(0, '#1a1030')
+    grad.addColorStop(0.42, '#6b3cc4')
+    grad.addColorStop(0.66, '#ff4fa6')
+    grad.addColorStop(1, '#0a0714')
+    g.fillStyle = grad
+    g.fillRect(0, 0, 64, 32)
+  }
+  const envTex = new CanvasTexture(envCanvas)
+  envTex.mapping = EquirectangularReflectionMapping
+  envTex.colorSpace = SRGBColorSpace
+  const contentPivot = new Group()
+  contentScene.add(contentPivot)
+  let contentLoaded = false
+
   const screen = makeScreenTexture()
   const screenMat = new ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uEnter: { value: 0 }, uText: { value: screen.tex } },
+    uniforms: {
+      uTime: { value: 0 },
+      uEnter: { value: 0 },
+      uChaos: { value: 0 },
+      uContentMix: { value: 0 },
+      uText: { value: screen.tex },
+      uContent: { value: contentRT.texture },
+    },
     vertexShader: screenVert,
     fragmentShader: screenFrag,
     toneMapped: false,
   })
+
+  // The sign-off pass: the scene is captured here and warped by warpFrag.
+  const sceneRT = new WebGLRenderTarget(2, 2)
+  const postScene = new Scene()
+  const postCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
+  const postMat = new ShaderMaterial({
+    uniforms: {
+      uTex: { value: null },
+      uProg: { value: 0 },
+      uRes: { value: [2, 2] },
+      uCenter: { value: [0.5, 0.5] },
+    },
+    vertexShader: quadVert,
+    fragmentShader: warpFrag,
+    depthTest: false,
+    depthWrite: false,
+    transparent: true,
+  })
+  postScene.add(new Mesh(new PlaneGeometry(2, 2), postMat))
+  let warp = 0
 
   // rig: yaw lives on the pivot, the model is re-centred inside it, so the box
   // always spins about its own middle no matter how the GLB was authored.
@@ -293,6 +456,9 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     }
     // updateStyle=false: the element's size is CSS's job, we only own the buffer
     renderer.setSize(w, h, false)
+    const pr = renderer.getPixelRatio()
+    sceneRT.setSize(Math.max(2, Math.round(w * pr)), Math.max(2, Math.round(h * pr)))
+    postMat.uniforms.uRes.value = [w, h]
   }
   fitCamera()
 
@@ -430,7 +596,35 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     const t = now * 0.001
     screenMat.uniforms.uTime.value = t
     screenGlow.intensity = 2.2 + Math.sin(t * 19.0) * 0.25 + screenMat.uniforms.uEnter.value * 4.0
-    renderer.render(scene, camera)
+
+    // the tube's own broadcast, only while it is actually on screen
+    if (contentLoaded && screenMat.uniforms.uContentMix.value > 0.001) {
+      /* Square to camera, the way the hero holds it. It used to spin on Y,
+         which tumbled the mark edge-on — the page shows this thing face-on, so
+         anything but face-on here is a difference the reveal has to undo.
+         A breath of sway keeps it from looking like a still. */
+      contentPivot.rotation.y = Math.sin(t * 0.45) * 0.07
+      contentPivot.rotation.x = Math.sin(t * 0.33) * 0.04
+      renderer.setRenderTarget(contentRT)
+      renderer.clear()
+      renderer.render(contentScene, contentCam)
+      renderer.setRenderTarget(null)
+    }
+
+    if (warp > 0.0005) {
+      renderer.setRenderTarget(sceneRT)
+      renderer.clear()
+      renderer.render(scene, camera)
+      renderer.setRenderTarget(null)
+      // the bubble is born at the glass, wherever the glass happens to be
+      const sp = screenCentre.clone().project(camera)
+      postMat.uniforms.uCenter.value = [sp.x * 0.5 + 0.5, sp.y * 0.5 + 0.5]
+      postMat.uniforms.uTex.value = sceneRT.texture
+      postMat.uniforms.uProg.value = warp
+      renderer.render(postScene, postCam)
+    } else {
+      renderer.render(scene, camera)
+    }
   }
   raf = requestAnimationFrame(tick)
 
@@ -441,6 +635,72 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     setEnter: (v: number) => { screenMat.uniforms.uEnter.value = v },
     onReady: (cb) => { if (ready) cb(); else readyCbs.push(cb) },
     setScreenText: (lines: ScreenLine[]) => screen.draw(lines),
+    setChaos: (v: number) => { screenMat.uniforms.uChaos.value = v },
+    setContentMix: (v: number) => { screenMat.uniforms.uContentMix.value = v },
+    setWarp: (v: number) => { warp = v },
+    loadContent: () => {
+      if (contentLoaded) return Promise.resolve(false)
+      return new Promise<boolean>((resolve) => {
+        loader.load(
+          '/models/metal-letter-opt.glb',
+          (g) => {
+            if (disposed) return resolve(false)
+            const o = g.scene
+
+            // the environment, prepared once
+            const pmrem = new PMREMGenerator(renderer)
+            contentScene.environment = pmrem.fromEquirectangular(envTex).texture
+            pmrem.dispose()
+            envTex.dispose()
+
+            /* The same cast-crystal material the hero uses, values copied from
+               HERO.glass. The point is that the mark on the tube and the mark on
+               the page are the same object, so the reveal has nothing to
+               reconcile. */
+            const crystal = new MeshPhysicalMaterial({
+              transmission: 1,
+              ior: 1.52,
+              thickness: 4.6,
+              roughness: 0.1,
+              metalness: 0,
+              clearcoat: 1,
+              clearcoatRoughness: 0.04,
+              reflectivity: 1,
+              envMapIntensity: 1.6,
+              attenuationDistance: 4.4,
+              attenuationColor: 0x6a3cff,
+              iridescence: 1,
+              iridescenceIOR: 1.35,
+              iridescenceThicknessRange: [180, 940],
+              sheen: 1,
+              sheenRoughness: 0.5,
+              sheenColor: 0xff6cc0,
+              color: 0xffffff,
+            })
+            o.traverse((n) => {
+              const m = n as Mesh
+              if (m.isMesh) m.material = crystal
+            })
+
+            // The GLB lies flat: stand it up the way the hero does, and hold
+            // its proportions with the same widthScale.
+            o.rotation.set(Math.PI / 2, 0, 0)
+            const box = new Box3().setFromObject(o)
+            const size = box.getSize(new Vector3())
+            const fit = 1.62 / Math.max(size.x, size.y, size.z)
+            o.scale.set(fit * 1.22, fit, fit)
+            o.updateMatrixWorld(true)
+            const c2 = new Box3().setFromObject(o).getCenter(new Vector3())
+            o.position.sub(c2)
+            contentPivot.add(o)
+            contentLoaded = true
+            resolve(true)
+          },
+          undefined,
+          () => resolve(false),
+        )
+      })
+    },
     getCam: () => ({
       px: +camera.position.x.toFixed(3),
       py: +camera.position.y.toFixed(3),
@@ -505,6 +765,8 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       disposed = true
       cancelAnimationFrame(raf)
       ro?.disconnect()
+      sceneRT.dispose()
+      contentRT.dispose()
       window.removeEventListener('resize', onResize)
       renderer.dispose()
       renderer.forceContextLoss()

@@ -21,23 +21,25 @@ import { createCrtScene, type CamKey, type CrtHandle, type ScreenLine } from './
 
    coverage = how much of the frame height the glass fills at that key. */
 const FLIGHT_KEYS: { t: number; coverage: number }[] = [
-  { t: 950, coverage: 0.46 },
-  { t: 1950, coverage: 0.92 },
-  { t: 2650, coverage: 1.3 },
+  // The first key deliberately sits near the size the glass already appears at
+  // on the title screen, so the move STARTS at the framing rather than jumping
+  // to a new one and then creeping. The growth is then spread evenly across the
+  // remaining keys instead of being spent in the first segment.
+  { t: 700, coverage: 0.4 },
+  { t: 1500, coverage: 0.58 },
+  { t: 2300, coverage: 0.8 },
+  { t: 3100, coverage: 1.05 },
 ]
 
-/** Copy shown on the tube during the transmission sequence. */
-const SIGNAL: ScreenLine[][] = [
-  [{ t: 'SIGNAL LOST.', s: 40, c: '#eaf1ff', b: true, gap: 0 }],
-  [
-    { t: 'SIGNAL LOST.', s: 34, c: '#9dc0ff', gap: 44 },
-    { t: 'RECONNECTING…', s: 40, c: '#eaf1ff', b: true, gap: 0 },
-  ],
-  [
-    { t: 'ROHIT DIGGI', s: 44, c: '#ffffff', b: true, gap: 40 },
-    { t: 'SYSTEM ONLINE.', s: 34, c: '#9dc0ff', gap: 0 },
-  ],
+/** Copy shown on the tube while it hunts for the channel. No glitch beats and
+    no "SYSTEM ONLINE" — the tube just searches, then locks on. */
+const HUNT: ScreenLine[][] = [
+  [{ t: 'FINDING CHANNEL', s: 34, c: '#9dc0ff', gap: 0 }],
+  [{ t: 'FINDING CHANNEL .', s: 34, c: '#bcd4ff', gap: 0 }],
+  [{ t: 'FINDING CHANNEL . .', s: 34, c: '#dbe8ff', gap: 0 }],
+  [{ t: 'CHANNEL LOCKED', s: 36, c: '#ffffff', b: true, gap: 0 }],
 ]
+
 
 const MENU = [
   { id: 'enter', label: 'Enter System' },
@@ -186,8 +188,10 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
 
     /* Start pulling the site down now. It is only the fetch and parse — nothing
        mounts yet — so the heavy work is done by the time the transmission ends
-       and the reveal can show a page that is actually ready. */
+       and the reveal can show a page that is actually ready. The tube's model
+       is the hero's own file, so this warms it for the page too. */
     opts.prefetch?.()
+    void crt.loadContent()
 
     // 2. Fly, swelling the static as we close on the glass. Every key after the
     //    first sits on the screen's normal, so this is one turn onto the picture
@@ -212,7 +216,9 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
        a frozen title screen. */
     const watchdog = window.setTimeout(transmission, FLIGHT + 600)
 
-    // 3. The transmission, played on the tube itself now that it fills the frame.
+    /* 3. The tube hunts for a channel, then locks onto the model: the snow
+       peaks, the copy dies, and the RD letter simply arrives in the middle of
+       the picture with the interference still boiling behind it. */
     let started = false
     function transmission () {
       if (started) return
@@ -220,13 +226,34 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
       window.clearTimeout(watchdog)
       crt.stopPath()
       let i = 0
-      const step = () => {
-        crt.setEnter(i === 0 ? 0.95 : 0.5) // burst of snow, then it settles
-        crt.setScreenText(SIGNAL[i])
+      const hunt = () => {
+        // interference climbs with every failed attempt
+        crt.setEnter(0.45 + i * 0.16)
+        crt.setChaos(0.25 + i * 0.25)
+        crt.setScreenText(HUNT[i])
         i += 1
-        window.setTimeout(i < SIGNAL.length ? step : handoff, 900)
+        if (i < HUNT.length) { window.setTimeout(hunt, 420); return }
+        window.setTimeout(lock, 420)
       }
-      step()
+      hunt()
+    }
+
+    /** The lock-on: chaos snaps off, the model fades up on the glass. */
+    function lock () {
+      crt.setScreenText([])
+      const t1 = performance.now()
+      const DUR = 620
+      const fade = () => {
+        const p = Math.min(1, (performance.now() - t1) / DUR)
+        crt.setContentMix(p)
+        // the interference dies away completely — the mark has to be clean,
+        // because it is the same object the page is about to show
+        crt.setEnter(0.9 * (1 - p))
+        crt.setChaos(1.0 - p)
+        if (p < 1) requestAnimationFrame(fade)
+      }
+      requestAnimationFrame(fade)
+      window.setTimeout(handoff, DUR + 900)
     }
 
     /* 4. The hand-off. The site mounts behind the still-lit tube, then the tube
@@ -234,15 +261,33 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
        bright horizontal line, the line snaps to a point — and the hero is simply
        already there behind it. Much better than fading through black, and it
        ends the intro on the same piece of hardware it started on. */
+    /* 4. The sign-off. The site mounts behind the still-lit tube, then the whole
+       picture is swallowed by one spherical swell — the frame balloons, a ring
+       stretches out through it, the channels smear apart at the edges — and the
+       zoom drives through into the hero, which is already sitting there. */
     function handoff () {
       opts.onEnter(target)
-      root.classList.add('signing-off')
+      const t2 = performance.now()
+      const DUR = 1500 // long enough that the bubble visibly settles, not just pops
+      const swell = () => {
+        const p = Math.min(1, (performance.now() - t2) / DUR)
+        crt.setWarp(p)
+        if (p < 1) { requestAnimationFrame(swell); return }
+        root.classList.add('signing-off')
+        window.setTimeout(() => {
+          crt.dispose()
+          window.setTimeout(cleanup, 480)
+        }, 460)
+      }
+      requestAnimationFrame(swell)
+      // timers survive a hidden tab where rAF does not
       window.setTimeout(() => {
-        crt.dispose()
-        root.style.transition = 'opacity 0.45s ease'
-        root.style.opacity = '0'
-        window.setTimeout(cleanup, 500)
-      }, 620)
+        if (!root.classList.contains('signing-off')) {
+          crt.setWarp(1)
+          root.classList.add('signing-off')
+          window.setTimeout(() => { crt.dispose(); window.setTimeout(cleanup, 480) }, 460)
+        }
+      }, DUR + 400)
     }
   }
 }
