@@ -376,80 +376,107 @@ export function OutroWireframe() {
               <span className="rd-w-avail">◍ Open to opportunities · 2026</span>
             </div>
 
-            {/* About + stats */}
-            <section className="rd-w-sec rd-reveal">
-              <span className="rd-w-label" data-scramble>01 — About</span>
-              <h1 className="rd-w-name">Rohit Diggi</h1>
-              <p className="rd-w-bio">
-                AI/ML engineer and full-stack developer pursuing a B.Tech (Hons.)
-                in CSE with an AI/ML specialisation at RV University, Bengaluru.
-                I build real-world AI systems — RAG pipelines, agentic AI, and
-                network-security research — including <b>Satark.ai</b>, an agentic
-                honeypot API that placed Top 8 nationwide at the HCL GUVI AI Impact
-                Summit 2026, and a co-authored paper on hybrid AI-powered DDoS
-                detection presented at SWSIoT-2025 in association with Springer.
-                I care about clean UI, scalable systems, and AI that actually ships.
-              </p>
-              <div className="rd-w-stats">
-                {STATS.map(([n, l]) => (
-                  <div key={l} className="rd-w-stat">
-                    <span className="rd-w-stat-n">{n}</span>
-                    <span className="rd-w-stat-l">{l}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
+            {/* ---------------------------------------------------------------
+                The profile as a spec sheet rather than a stacked résumé: an
+                asymmetric tile grid, so the eye moves around the page instead
+                of straight down a column. Every tile keeps .rd-reveal so the
+                existing IntersectionObserver still staggers them in.
+               --------------------------------------------------------------- */}
+            <div className="rd-bento">
+              {/* identity */}
+              <section className="rd-tile rd-tile--id rd-reveal">
+                <span className="rd-w-label" data-scramble>01 — About</span>
+                <h1 className="rd-w-name">Rohit Diggi</h1>
+                <p className="rd-w-bio">
+                  AI/ML engineer and full-stack developer pursuing a B.Tech (Hons.)
+                  in CSE with an AI/ML specialisation at RV University, Bengaluru.
+                  I build real-world AI systems — RAG pipelines, agentic AI, and
+                  network-security research — including <b>Satark.ai</b>, an agentic
+                  honeypot API that placed Top 8 nationwide at the HCL GUVI AI Impact
+                  Summit 2026, and a co-authored paper on hybrid AI-powered DDoS
+                  detection presented at SWSIoT-2025 in association with Springer.
+                  I care about clean UI, scalable systems, and AI that actually ships.
+                </p>
+              </section>
 
-            {/* Skills */}
-            <section className="rd-w-sec rd-reveal">
-              <span className="rd-w-label" data-scramble>02 — Skills</span>
-              <div className="rd-w-bars">
-                {SKILLS.map(([name, lvl]) => (
-                  <div key={name} className="rd-w-bar">
-                    <div className="rd-w-bar-head">
-                      <span>{name}</span>
-                      <span className="rd-w-bar-lvl">LVL {lvl}</span>
+              {/* the dossier card — facts already stated in the bio, pulled out
+                  as a scannable index card */}
+              <aside className="rd-tile rd-tile--spec rd-reveal">
+                <span className="rd-tile-cap" data-scramble>Specification</span>
+                <div className="rd-spec-mark" aria-hidden="true">RD</div>
+                <dl className="rd-spec">
+                  <div><dt>Model</dt><dd>RD · 2026</dd></div>
+                  <div><dt>Based</dt><dd>Bengaluru, IN</dd></div>
+                  <div><dt>Field</dt><dd>AI/ML · Full-stack</dd></div>
+                  <div><dt>Institute</dt><dd>RV University</dd></div>
+                  <div><dt>Status</dt><dd><i className="rd-spec-dot" />Available</dd></div>
+                </dl>
+              </aside>
+
+              {/* the numbers, as their own row of small tiles */}
+              {STATS.map(([n, l]) => (
+                <div key={l} className="rd-tile rd-tile--stat rd-reveal">
+                  <span className="rd-w-stat-n">{n}</span>
+                  <span className="rd-w-stat-l">{l}</span>
+                </div>
+              ))}
+
+              {/* skills */}
+              <section className="rd-tile rd-tile--skills rd-reveal">
+                <span className="rd-w-label" data-scramble>02 — Skills</span>
+                <div className="rd-w-bars">
+                  {SKILLS.map(([name, lvl]) => (
+                    <div key={name} className="rd-w-bar">
+                      <div className="rd-w-bar-head">
+                        <span>{name}</span>
+                        <span className="rd-w-bar-lvl">LVL {lvl}</span>
+                      </div>
+                      <div className="rd-w-bar-track">
+                        <div className="rd-w-bar-fill" style={{ width: `${lvl}%` }} />
+                      </div>
                     </div>
-                    <div className="rd-w-bar-track">
-                      <div className="rd-w-bar-fill" style={{ width: `${lvl}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="rd-w-skills">
-                {SKILL_CHIPS.map((c) => (
-                  <span key={c}>{c}</span>
-                ))}
-              </div>
-            </section>
+                  ))}
+                </div>
+              </section>
 
-            {/* Achievements */}
-            <section className="rd-w-sec rd-reveal">
-              <span className="rd-w-label" data-scramble>03 — Achievements</span>
-              <ul className="rd-w-list">
-                {ACHIEVEMENTS.map(([t, m, d]) => (
-                  <li key={t}>
-                    <h3 data-scramble>{t}</h3>
-                    <span className="rd-w-list-meta">{m}</span>
-                    <p>{d}</p>
-                  </li>
-                ))}
-              </ul>
-            </section>
+              {/* stack */}
+              <section className="rd-tile rd-tile--chips rd-reveal">
+                <span className="rd-tile-cap" data-scramble>Stack</span>
+                <div className="rd-w-skills">
+                  {SKILL_CHIPS.map((c) => (
+                    <span key={c}>{c}</span>
+                  ))}
+                </div>
+              </section>
 
-            {/* Certifications */}
-            <section className="rd-w-sec rd-reveal">
-              <span className="rd-w-label" data-scramble>04 — Certifications</span>
-              <ul className="rd-w-list">
-                {CERTS.map(([t, m, d]) => (
-                  <li key={t}>
-                    <h3 data-scramble>{t}</h3>
-                    <span className="rd-w-list-meta">{m}</span>
-                    <p>{d}</p>
-                  </li>
-                ))}
-              </ul>
-            </section>
+              {/* achievements */}
+              <section className="rd-tile rd-tile--rec rd-reveal">
+                <span className="rd-w-label" data-scramble>03 — Achievements</span>
+                <ul className="rd-w-list">
+                  {ACHIEVEMENTS.map(([t, m, d]) => (
+                    <li key={t}>
+                      <h3 data-scramble>{t}</h3>
+                      <span className="rd-w-list-meta">{m}</span>
+                      <p>{d}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              {/* certifications */}
+              <section className="rd-tile rd-tile--rec rd-reveal">
+                <span className="rd-w-label" data-scramble>04 — Certifications</span>
+                <ul className="rd-w-list">
+                  {CERTS.map(([t, m, d]) => (
+                    <li key={t}>
+                      <h3 data-scramble>{t}</h3>
+                      <span className="rd-w-list-meta">{m}</span>
+                      <p>{d}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
 
           </div>
 

@@ -589,7 +589,7 @@ canvas {
   transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.15s;
 }
 /* the segments light up as the section arrives rather than being pre-filled */
-.rd-w-sec:not(.rd-in) .rd-w-bar-fill { width: 0 !important; }
+.rd-reveal:not(.rd-in) .rd-w-bar-fill { width: 0 !important; }
 /* Achievements / Certifications / Beyond — shared list */
 .rd-w-list {
   list-style: none;
@@ -712,6 +712,152 @@ canvas {
   font: 500 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.08em;
   color: var(--muted);
+}
+
+
+/* ---- The profile as a spec sheet ---------------------------------------
+   An asymmetric tile grid rather than four stacked sections, so the eye
+   moves around the page instead of straight down one column. Tiles carry
+   datasheet corner ticks and a dossier card, which is what makes this read
+   as a designed artefact rather than a résumé printout. */
+.rd-bento {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: clamp(12px, 1.4vw, 20px);
+  align-items: stretch;
+}
+.rd-tile {
+  position: relative;
+  padding: clamp(22px, 2.4vw, 34px);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.66));
+  box-shadow:
+    0 1px 2px rgba(14, 15, 17, 0.04),
+    0 12px 30px -14px rgba(14, 15, 17, 0.2);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+.rd-tile:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 1px 2px rgba(14, 15, 17, 0.05),
+    0 22px 44px -18px rgba(124, 77, 255, 0.32);
+}
+/* registration marks, the way a spec drawing is cornered */
+.rd-tile::before,
+.rd-tile::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.rd-tile::before {
+  top: 10px;
+  left: 10px;
+  border-top: 1px solid;
+  border-left: 1px solid;
+  border-top-left-radius: 5px;
+}
+.rd-tile::after {
+  bottom: 10px;
+  right: 10px;
+  border-bottom: 1px solid;
+  border-right: 1px solid;
+  border-bottom-right-radius: 5px;
+}
+
+.rd-tile--id { grid-column: span 7; }
+.rd-tile--spec { grid-column: span 5; }
+.rd-tile--stat {
+  grid-column: span 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-height: 122px;
+}
+.rd-tile--skills { grid-column: span 8; }
+.rd-tile--chips { grid-column: span 4; }
+.rd-tile--rec { grid-column: span 6; }
+
+/* the accent edge belongs to the number tiles only */
+.rd-tile--stat { overflow: hidden; }
+.rd-tile--stat::before {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border: 0;
+  border-radius: 0;
+  background: var(--grad);
+  opacity: 0.8;
+}
+
+.rd-tile-cap {
+  display: block;
+  margin-bottom: 18px;
+  font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* dossier card */
+.rd-spec-mark {
+  position: absolute;
+  right: clamp(16px, 2vw, 30px);
+  bottom: clamp(10px, 1.4vw, 20px);
+  font: 400 clamp(3rem, 6.5vw, 5.4rem) / 0.8 'Russo One', 'Space Grotesk', sans-serif;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0.13;
+  pointer-events: none;
+}
+.rd-spec { margin: 0; }
+.rd-spec > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.rd-spec > div:last-child { border-bottom: 0; }
+.rd-spec dt {
+  font: 500 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rd-spec dd {
+  margin: 0;
+  font: 600 0.92rem/1.2 'Space Grotesk', sans-serif;
+  color: var(--ink);
+  text-align: right;
+}
+.rd-spec-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+@media (max-width: 900px) {
+  .rd-tile--id,
+  .rd-tile--spec,
+  .rd-tile--skills,
+  .rd-tile--chips,
+  .rd-tile--rec { grid-column: span 12; }
+  .rd-tile--stat { grid-column: span 6; }
+  /* no spare foot on a stacked card for the ghost monogram to sit in */
+  .rd-spec-mark { display: none; }
 }
 
 /* --- The dark descent + CRT abyss ending -------------------------------- */
@@ -939,8 +1085,8 @@ canvas {
 }
 .rd-w-name {
   margin: 0 0 18px;
-  font: 400 clamp(3rem, 9vw, 7rem) / 0.92 'Russo One', 'Space Grotesk', sans-serif;
-  letter-spacing: -0.005em;
+  font: 400 clamp(2.5rem, 5.4vw, 4.4rem) / 0.94 'Russo One', 'Space Grotesk', sans-serif;
+  letter-spacing: -0.01em;
   background: var(--grad);
   -webkit-background-clip: text;
   background-clip: text;
