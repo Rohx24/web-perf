@@ -1379,3 +1379,13 @@ html.rd-vibrance .rd-canvas,
 html.rd-vibrance .rd-finale {
   filter: saturate(var(--rd-vibrance, 1));
 }
+
+/* The title screen owns the viewport. The portfolio mounts underneath it and
+   brings its own scroll length, so without this a wheel over the title screen
+   scrolls the site behind it and ENTER lands mid-page. */
+html.rd-intro-lock,
+html.rd-intro-lock body {
+  overflow: hidden;
+  height: 100%;
+  overscroll-behavior: none;
+}

@@ -354,14 +354,15 @@ export function OutroWireframe() {
                 <span className="rd-w-label" data-scramble>01 — About</span>
                 <h1 className="rd-w-name">Rohit Diggi</h1>
                 <p className="rd-w-bio">
-                  AI/ML engineer and full-stack developer pursuing a B.Tech (Hons.)
-                  in CSE with an AI/ML specialisation at RV University, Bengaluru.
-                  I build real-world AI systems — RAG pipelines, agentic AI, and
-                  network-security research — including <b>Satark.ai</b>, an agentic
-                  honeypot API that placed Top 8 nationwide at the HCL GUVI AI Impact
-                  Summit 2026, and a co-authored paper on hybrid AI-powered DDoS
-                  detection presented at SWSIoT-2025 in association with Springer.
-                  I care about clean UI, scalable systems, and AI that actually ships.
+                  AI/ML engineer and full-stack developer, pursuing a B.Tech (Hons.)
+                  in CSE at RV University, Bengaluru, specialising in AI/ML. I build
+                  real-world AI systems: RAG pipelines, agentic AI, and
+                  network-security research. That includes <b>Satark.ai</b>, an
+                  agentic honeypot API that placed Top 8 nationwide at the HCL GUVI
+                  AI Impact Summit 2026, and a co-authored paper on hybrid AI-powered
+                  DDoS detection presented at SWSIoT-2025 in association with
+                  Springer. I care about clean UI, scalable systems, and AI that
+                  actually ships.
                 </p>
               </section>
 

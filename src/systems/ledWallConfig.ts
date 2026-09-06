@@ -165,8 +165,9 @@ export const LED = {
     /** What that first cut goes TO, once the page has arrived. Fixed rather
      *  than random: the opening beat should be the same every time. */
     arriveOn: PROGRAM.fieldViolet,
-    /** Beat between the page arriving and that first cut firing. */
-    arriveDelay: 0.55,
+    /** Beat between the page arriving and that first cut firing. Long enough to
+     *  register the glyph field as a state of its own before it is replaced. */
+    arriveDelay: 2,
     /** Seconds a programme holds before the next one is chosen. */
     holdSeconds: 6,
     /**

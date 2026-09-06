@@ -88,6 +88,15 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   `
   document.body.appendChild(root)
 
+  /* Lock the page while the title screen is up.
+
+     The portfolio mounts underneath now, and it brings its own scroll length
+     with it — so a wheel over the title screen was quietly scrolling the site
+     behind it, and ENTER dropped you wherever you had got to instead of at the
+     top of the hero. Nothing here scrolls, so taking the scroll away costs the
+     title screen nothing. It is handed back at the reveal, from the top. */
+  document.documentElement.classList.add('rd-intro-lock')
+
   // --- menu ---
   const menuEl = root.querySelector('.intro-menu') as HTMLElement
   let sel = 0
@@ -196,6 +205,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   window.addEventListener('keydown', onKey)
 
   const cleanup = () => {
+    document.documentElement.classList.remove('rd-intro-lock')
     window.removeEventListener('keydown', onKey)
     crt.dispose()
     root.remove()
@@ -335,6 +345,9 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
        starts that front and lifts the hero off its intro resolution) and take
        this layer off the screen. */
     function handoff () {
+      // hand the page back at the top, wherever the visitor's wheel had gone
+      window.scrollTo(0, 0)
+      document.documentElement.classList.remove('rd-intro-lock')
       opts.onEnter(target)
       root.classList.add('signing-off')
       window.setTimeout(() => { crt.dispose(); cleanup() }, 420)
