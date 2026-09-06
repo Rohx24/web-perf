@@ -199,6 +199,13 @@ canvas {
   color: #ffffff;
   transition: opacity 0.25s ease;
 }
+/* An invisible link is still a clickable link. The visit button below opts back
+   into pointer events for itself, so while this block is faded out the whole
+   subtree has to be forced inert — otherwise it catches clicks over the hero. */
+.rd-active[aria-hidden='true'],
+.rd-active[aria-hidden='true'] * {
+  pointer-events: none !important;
+}
 .rd-active-meta {
   display: flex;
   align-items: baseline;

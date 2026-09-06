@@ -70,7 +70,16 @@ export function ProjectOverlay() {
           }
         }
       }
-      if (infoRef.current) infoRef.current.style.opacity = String(inGallery)
+      if (infoRef.current) {
+        infoRef.current.style.opacity = String(inGallery)
+        /* Opacity 0 does not stop hit-testing. This block carries the active
+           project's launch link, and that link re-enables pointer events for
+           itself — so at the hero, where the block is invisible, clicking empty
+           space under the logo was opening whichever project sits at index 0.
+           Marking it hidden takes the whole subtree out of hit-testing, and out
+           of the accessibility tree with it, which is true either way. */
+        infoRef.current.setAttribute('aria-hidden', inGallery < 0.02 ? 'true' : 'false')
+      }
 
       raf = requestAnimationFrame(tick)
     }
@@ -115,7 +124,10 @@ export function ProjectOverlay() {
         WORKS
       </div>
       {/* The active project, set large on the main display, outside the pane. */}
-      <div ref={infoRef} className="rd-active" style={{ opacity: 0 }}>
+      {/* aria-hidden from the first paint, not from the first frame: the tick that
+          maintains it runs in rAF, and rAF does not run in a hidden tab. Starting
+          inert means this can never be clickable before it is visible. */}
+      <div ref={infoRef} className="rd-active" style={{ opacity: 0 }} aria-hidden="true">
         <div className="rd-active-meta">
           <span ref={indexRef} className="rd-active-index" />
           <span ref={tagRef} className="rd-active-tag" />
