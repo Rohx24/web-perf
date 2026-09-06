@@ -13,6 +13,7 @@ import { Viewer } from './scene/Viewer'
 import { VIEWER } from './scene/roomConfig'
 import { GlassLayer } from './systems/GlassLayer'
 import { HeroSystem } from './systems/HeroSystem'
+import { IntroReveal } from './systems/IntroReveal'
 import { LedWall } from './systems/LedWall'
 import { TypographySystem } from './systems/TypographySystem'
 import { Wordmark } from './systems/Wordmark'
@@ -70,6 +71,10 @@ export default function App() {
       }}
     >
       <Viewer />
+      {/* Alche's finalCompositeFrag, on the page's own composite — the front
+          that hands the title screen over to the hero. Unmounts when it is
+          done, so the extra pass exists only while it runs. */}
+      <IntroReveal />
       {/* Measures real FPS and scales DPR + transmission to keep it smooth on
           any device. The universal fix for "laggy on some laptop". */}
       <AdaptiveQuality setDpr={setDpr} />

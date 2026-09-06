@@ -18,7 +18,6 @@ import {
   Texture,
   TextureLoader,
   Scene,
-  WebGLRenderTarget,
   ShaderMaterial,
   SRGBColorSpace,
   Vector3,
@@ -282,56 +281,6 @@ const quadVert = /* glsl */ `
   void main () { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
 `
 
-/* The sign-off warp. Alche do this as a glass mesh refracting a screen-space
-   capture of the page; the giveaway in their mainLogoFrag is that R, G and B
-   are sampled at 1x, 2x and 4x the SAME offset rather than a symmetric split,
-   which is what gives the edges that rainbow smear. This is the same idea run
-   as one full-screen pass over the intro's own render, which costs a single
-   quad instead of a refracting mesh and a cube map. */
-const warpFrag = /* glsl */ `
-  precision highp float;
-  uniform sampler2D uTex;
-  uniform float uProg;
-  uniform vec2 uRes;
-  uniform vec2 uCenter;   // where the glass is on screen, in uv
-  varying vec2 vUv;
-
-  #define PI 3.14159265359
-
-  /* Alche's finalCompositeFrag, ported.
-
-     Theirs is four lines and no chromatic aberration at all — the rainbow on
-     their site is mainLogoFrag, a glass material on the logo MESH, which is a
-     different effect entirely. Copying it into a full-screen pass is what
-     turned this into a purple smear.
-
-       r        = one circular front, its edge softening as it travels
-       sin(r*PI)= a single radial push, zero at both ends, peaking at the front
-       alpha    = the same front, wiping this layer off the page beneath
-
-     They crossfade to the destination as a texture. We cannot sample the hero
-     (separate context), so the front drives ALPHA instead and the page shows
-     through — same wipe, same wave, no second texture. The destination's 2x-to-
-     1:1 settle is done as a CSS transform on the page itself. */
-  void main () {
-    float asp = uRes.x / max(1.0, uRes.y);
-    vec2 cuv = vUv - uCenter;
-    cuv.x *= asp;
-
-    float p = clamp(uProg, 0.0, 1.0);
-    float r = smoothstep(0.0, 0.2 + p * 0.7, -length(cuv) + p * 1.4);
-
-    vec2 push = sin(r * PI) * normalize(cuv + 1e-6) * 0.1;
-    push.x /= asp;
-    vec2 uv = vUv - push;
-
-    vec4 col = texture2D(uTex, uv);
-    // the outgoing layer is wiped off on the same front that carries the wave
-    float a = col.a * (1.0 - smoothstep(0.0, 0.5, r));
-    gl_FragColor = vec4(col.rgb, a);
-  }
-`
-
 export interface CrtHandle {
   setEnter: (v: number) => void
   dispose: () => void
@@ -348,8 +297,6 @@ export interface CrtHandle {
   setFlash: (v: number) => void
   /** crossfade the tube from type to the live model, 0..1 */
   setContentMix: (v: number) => void
-  /** the spherical sign-off warp, 0..1 */
-  setWarp: (v: number) => void
   /** pull the hero's model in for the tube (also warms it for the page) */
   loadContent: () => Promise<boolean>
   /** camera rig — used by the ?cam=1 keyframe editor and the ENTER flight */
@@ -436,26 +383,6 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     toneMapped: false,
   })
 
-  // The sign-off pass: the scene is captured here and warped by warpFrag.
-  const sceneRT = new WebGLRenderTarget(2, 2)
-  const postScene = new Scene()
-  const postCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
-  const postMat = new ShaderMaterial({
-    uniforms: {
-      uTex: { value: null },
-      uProg: { value: 0 },
-      uRes: { value: [2, 2] },
-      uCenter: { value: [0.5, 0.5] },
-    },
-    vertexShader: quadVert,
-    fragmentShader: warpFrag,
-    depthTest: false,
-    depthWrite: false,
-    transparent: true,
-  })
-  postScene.add(new Mesh(new PlaneGeometry(2, 2), postMat))
-  let warp = 0
-
   /* The projection: the tube's picture drawn straight onto the viewport, with
      no model and no camera involved at all. Pressing ENTER cuts to this rather
      than flying a camera at the set — there is no geometry to rotate, shear or
@@ -463,6 +390,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
      uniform objects by reference, so the two surfaces are always the same
      broadcast; only the vertex stage differs. */
   const projScene = new Scene()
+  const projCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
   const projMat = new ShaderMaterial({
     uniforms: screenMat.uniforms,
     vertexShader: quadVert,
@@ -537,9 +465,6 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     }
     // updateStyle=false: the element's size is CSS's job, we only own the buffer
     renderer.setSize(w, h, false)
-    const pr = renderer.getPixelRatio()
-    sceneRT.setSize(Math.max(2, Math.round(w * pr)), Math.max(2, Math.round(h * pr)))
-    postMat.uniforms.uRes.value = [w, h]
   }
   fitCamera()
 
@@ -686,26 +611,13 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
 
     // once we have cut to the projection, the room is no longer drawn at all
     const source = projection ? projScene : scene
-    const sourceCam = projection ? postCam : camera
+    const sourceCam = projection ? projCam : camera
     // on the tube the surface is the glass; full screen it is the viewport
     screenMat.uniforms.uDispAspect.value = projection
       ? container.clientWidth / Math.max(1, container.clientHeight)
       : 1.3128
 
-    if (warp > 0.0005) {
-      renderer.setRenderTarget(sceneRT)
-      renderer.clear()
-      renderer.render(source, sourceCam)
-      renderer.setRenderTarget(null)
-      // the bubble is born at the glass, wherever the glass happens to be
-      const sp = screenCentre.clone().project(camera)
-      postMat.uniforms.uCenter.value = [sp.x * 0.5 + 0.5, sp.y * 0.5 + 0.5]
-      postMat.uniforms.uTex.value = sceneRT.texture
-      postMat.uniforms.uProg.value = warp
-      renderer.render(postScene, postCam)
-    } else {
-      renderer.render(source, sourceCam)
-    }
+    renderer.render(source, sourceCam)
   }
   raf = requestAnimationFrame(tick)
 
@@ -721,7 +633,6 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     setOverlay: (on: boolean) => { screenMat.uniforms.uOverlay.value = on ? 1 : 0 },
     setFlash: (v: number) => { screenMat.uniforms.uFlash.value = v },
     setContentMix: (v: number) => { screenMat.uniforms.uContentMix.value = v },
-    setWarp: (v: number) => { warp = v },
     loadContent: () => {
       if (stillLoaded) return Promise.resolve(true)
       return new Promise<boolean>((resolve) => {
@@ -809,7 +720,6 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       disposed = true
       cancelAnimationFrame(raf)
       ro?.disconnect()
-      sceneRT.dispose()
       stillTex.value?.dispose()
       window.removeEventListener('resize', onResize)
       renderer.dispose()
