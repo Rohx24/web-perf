@@ -30,9 +30,20 @@ const HUNT: ScreenLine[][] = [
 ]
 
 
-const MENU = [
+/**
+ * `href` makes a row a real link rather than a scripted one.
+ *
+ * The résumé used to open with window.open(), which the browser is entitled to
+ * swallow as a pop-up — silently, with no error, which is exactly how it
+ * presented: nothing happened on the deployed site while localhost was fine,
+ * because pop-up permission is per-site and localhost is commonly allowed.
+ * A user-activated link navigation is not subject to that, and it also gets
+ * middle-click, cmd-click, "open in new tab" and a visible destination on
+ * hover, none of which a button can offer.
+ */
+const MENU: { id: string; label: string; href?: string }[] = [
   { id: 'enter', label: 'Enter System' },
-  { id: 'resume', label: 'Résumé' },
+  { id: 'resume', label: 'Résumé', href: '/resume.html' },
   { id: 'contact', label: 'Contact' },
   { id: 'settings', label: 'Settings' },
 ]
@@ -101,9 +112,20 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   const menuEl = root.querySelector('.intro-menu') as HTMLElement
   let sel = 0
   const buttons = MENU.map((m, i) => {
-    const b = document.createElement('button')
+    const b = document.createElement(m.href ? 'a' : 'button')
     b.innerHTML = `<span class="car">▶</span><span class="lbl">${m.label}</span>`
-    b.addEventListener('click', () => { sel = i; paint(); activate() })
+    if (m.href) {
+      const a = b as HTMLAnchorElement
+      a.href = m.href
+      a.target = '_blank'
+      a.rel = 'noopener'
+    }
+    b.addEventListener('click', () => {
+      sel = i
+      paint()
+      // a link navigates on its own; everything else needs the handler
+      if (!m.href) activate()
+    })
     b.addEventListener('mouseenter', () => { sel = i; paint() })
     menuEl.appendChild(b)
     return b
@@ -212,10 +234,12 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   }
 
   function activate () {
-    const id = MENU[sel].id
-    if (id === 'resume') { window.open('/resume.html', '_blank'); return }
-    if (id === 'settings') { panel.hidden = !panel.hidden; return }
-    runEnter(id)
+    const item = MENU[sel]
+    /* Keyboard goes through the same navigation the mouse does, rather than a
+       second code path that can rot on its own. */
+    if (item.href) { buttons[sel].click(); return }
+    if (item.id === 'settings') { panel.hidden = !panel.hidden; return }
+    runEnter(item.id)
   }
 
   function runEnter (target: string) {
