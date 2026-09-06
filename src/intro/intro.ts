@@ -79,6 +79,9 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
   crt.onReady(() => root.classList.add('crt-ready'))
 
   const params = new URLSearchParams(window.location.search)
+  // ?crtdbg=1 exposes the tube so its state can be driven from the console
+  // without sitting through the whole ENTER sequence each time.
+  if (params.get('crtdbg') === '1') (window as unknown as { __crt: CrtHandle }).__crt = crt
   // The room plate has a real desk in it now, so the CSS one stays off unless
   // explicitly asked for (?desk=1) — kept around in case the plate changes.
   if (params.get('desk') !== '1') root.classList.add('no-desk')
@@ -144,8 +147,6 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
        box on the plate). Reparenting keeps the WebGL context — only recreating
        the canvas would lose it. */
     const set = root.querySelector('.intro-set') as HTMLElement
-    root.appendChild(set)
-    root.classList.add('flying')
 
     /* Start pulling the site down now. It is only the fetch and parse — nothing
        mounts yet — so the heavy work is done by the time the transmission ends
@@ -161,11 +162,11 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
        exact even if a frame is late. */
     crt.setEnter(0.5)
     root.classList.add('switching')
-    const ONSETS = [0, 330, 590, 795, 950] // accelerating
-    const PEAKS = [0.5, 0.7, 0.95, 1.3, 1.9] // and brighter each time
-    const PULSE = 95 // how long one pulse takes to fall away
-    const CUT = 1075 // the blow-out, and the moment the picture takes over
-    const SETTLE = 1000 // how long that blow-out takes to calm into the picture
+    const ONSETS = [0, 460, 830, 1130, 1370] // gaps closing: 460/370/300/240
+    const PEAKS = [0.35, 0.5, 0.7, 0.95, 1.4] // and brighter each time
+    const PULSE = 260 // each blink swells and falls rather than snapping
+    const CUT = 1720 // the blow-out, and the moment the picture takes over
+    const SETTLE = 1150 // how long that blow-out takes to calm into the picture
 
     const t0 = performance.now()
     let cut = false
@@ -174,7 +175,9 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
       let v = 0
       for (let i = 0; i < ONSETS.length; i++) {
         const d = e - ONSETS[i]
-        if (d >= 0 && d < PULSE) v = Math.max(v, PEAKS[i] * (1 - d / PULSE))
+        // sine envelope: rises and falls smoothly, so the tube swells instead
+        // of snapping on and off
+        if (d >= 0 && d < PULSE) v = Math.max(v, PEAKS[i] * Math.sin((Math.PI * d) / PULSE))
       }
       if (e >= CUT) {
         if (!cut) { cut = true; takeOver() }
@@ -187,7 +190,14 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
     }
     requestAnimationFrame(drive)
 
+    /* The set only takes the viewport HERE, not at the start. Going full-frame
+       up front let the automatic framing refit to the bigger canvas, which
+       hauled the tube right up to the camera before it had even blinked — it
+       should blink where it stands, in its own room, and only then become the
+       screen. */
     function takeOver () {
+      root.appendChild(set)
+      root.classList.add('flying')
       crt.setProjection(true)
       crt.setEnter(0.3)
       root.classList.remove('switching')

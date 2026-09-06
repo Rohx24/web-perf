@@ -741,9 +741,12 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
               if (m.isMesh) m.material = crystal
             })
 
-            // The GLB lies flat: stand it up the way the hero does, and hold
-            // its proportions with the same widthScale.
-            o.rotation.set(Math.PI / 2, 0, 0)
+            /* Face-on. HERO.rotation stands the GLB up with +90deg about X, but
+               that compensates for the hero's own rig — against this camera,
+               which looks straight down -Z at the model, the same 90deg turned
+               the mark edge-on and it rendered as a featureless slab. Checked
+               against the render, not copied. ?rot= to re-check. */
+            o.rotation.set((num('rot', 0) * Math.PI) / 180, 0, 0)
             const box = new Box3().setFromObject(o)
             const size = box.getSize(new Vector3())
             const fit = 1.62 / Math.max(size.x, size.y, size.z)
