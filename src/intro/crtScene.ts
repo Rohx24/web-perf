@@ -6,7 +6,6 @@ import {
   CanvasTexture,
   ClampToEdgeWrapping,
   DirectionalLight,
-  EquirectangularReflectionMapping,
   Group,
   LinearFilter,
   Mesh,
@@ -14,9 +13,10 @@ import {
   PerspectiveCamera,
   OrthographicCamera,
   PlaneGeometry,
-  PMREMGenerator,
   PointLight,
   Quaternion,
+  Texture,
+  TextureLoader,
   Scene,
   WebGLRenderTarget,
   ShaderMaterial,
@@ -26,10 +26,11 @@ import {
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
-import { createGlassMaterial } from '../systems/GlassMaterial'
-import { HERO } from '../systems/heroConfig'
 
 const MODEL = '/crt/crt_tv.glb'
+/* One pre-rendered frame of the hero, shown on the tube when the channel locks.
+   Optional: if it is not there the tube simply keeps showing its copy. */
+const STILL = '/crt/hero-still.webp'
 
 /* ------------------------------------------------------------------ *
  * Orientation, established from the GLB itself (not guessed):
@@ -371,49 +372,20 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   const screenGlow = new PointLight(0x74a0ff, 2.0, 4, 2)
   scene.add(screenGlow)
 
-  /* ---- the tube's live content channel -------------------------------
-     A second, tiny scene rendered to its own buffer and handed to the screen
-     shader, so the broadcast can lock onto the RD letter instead of only ever
-     showing type. 512x390 matches the glass aspect (1.313) so nothing skews.
-     The model is the same file the hero uses, so pulling it here warms the
-     cache for the page we are about to reveal rather than costing an extra
-     download. */
-  const contentRT = new WebGLRenderTarget(448, 341)
-  const contentScene = new Scene()
-  const contentCam = new PerspectiveCamera(30, 448 / 341, 0.1, 50)
-  contentCam.position.set(0, 0, 3.2)
-  contentScene.add(new AmbientLight(0x8a93c8, 1.1))
-  const cKey = new DirectionalLight(0xffc0e0, 2.6)
-  cKey.position.set(2.4, 2, 3)
-  contentScene.add(cKey)
-  const cRim = new DirectionalLight(0x8fb4ff, 2.2)
-  cRim.position.set(-3, 1.2, -2)
-  contentScene.add(cRim)
+  /* ---- what the tube shows when it locks on -------------------------
+     A STILL. Not a live scene.
 
-  /* The hero's mark is cast crystal with full transmission, and transmission
-     has nothing to refract without an environment — drop it in a bare scene and
-     it renders as a black silhouette. This is the wall's own ramp as an
-     equirect gradient, run through PMREM, which is what lets the same material
-     read here the way it reads on the page. */
-  const envCanvas = document.createElement('canvas')
-  envCanvas.width = 64
-  envCanvas.height = 32
-  {
-    const g = envCanvas.getContext('2d')!
-    const grad = g.createLinearGradient(0, 0, 0, 32)
-    grad.addColorStop(0, '#1a1030')
-    grad.addColorStop(0.42, '#6b3cc4')
-    grad.addColorStop(0.66, '#ff4fa6')
-    grad.addColorStop(1, '#0a0714')
-    g.fillStyle = grad
-    g.fillRect(0, 0, 64, 32)
-  }
-  const envTex = new CanvasTexture(envCanvas)
-  envTex.mapping = EquirectangularReflectionMapping
-  envTex.colorSpace = SRGBColorSpace
-  const contentPivot = new Group()
-  contentScene.add(contentPivot)
-  let contentLoaded = false
+     This was a second three.js scene rendering the hero's mark every frame
+     with a transmissive material — which makes three render the scene AGAIN
+     into a transmission buffer, every frame — plus a 2.5MB GLB fetched before
+     the page it belongs to, plus a PMREM environment built at run time.
+
+     All of that was inside a loading screen. The intro exists to keep the first
+     paint cheap enough to open on a weak machine; paying for a second live 3D
+     scene to decorate it is the opposite of the point. A pre-rendered frame
+     costs one texture upload and nothing per frame after that. */
+  const stillTex = { value: null as Texture | null }
+  let stillLoaded = false
 
   const screen = makeScreenTexture()
   const screenMat = new ShaderMaterial({
@@ -426,7 +398,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       uDispAspect: { value: 1.3128 },
       uLedPitch: { value: num('leds', 74) },
       uText: { value: screen.tex },
-      uContent: { value: contentRT.texture },
+      uContent: { value: null },
     },
     vertexShader: screenVert,
     fragmentShader: screenFrag,
@@ -681,20 +653,6 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       screenMat.uniforms.uEnter.value * 4.0 +
       screenMat.uniforms.uFlash.value * 9.0
 
-    // the tube's own broadcast, only while it is actually on screen
-    if (contentLoaded && screenMat.uniforms.uContentMix.value > 0.001) {
-      /* Square to camera, the way the hero holds it. It used to spin on Y,
-         which tumbled the mark edge-on — the page shows this thing face-on, so
-         anything but face-on here is a difference the reveal has to undo.
-         A breath of sway keeps it from looking like a still. */
-      contentPivot.rotation.y = Math.sin(t * 0.45) * 0.07
-      contentPivot.rotation.x = Math.sin(t * 0.33) * 0.04
-      renderer.setRenderTarget(contentRT)
-      renderer.clear()
-      renderer.render(contentScene, contentCam)
-      renderer.setRenderTarget(null)
-    }
-
     // once we have cut to the projection, the room is no longer drawn at all
     const source = projection ? projScene : scene
     const sourceCam = projection ? postCam : camera
@@ -733,50 +691,24 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
     setContentMix: (v: number) => { screenMat.uniforms.uContentMix.value = v },
     setWarp: (v: number) => { warp = v },
     loadContent: () => {
-      if (contentLoaded) return Promise.resolve(false)
+      if (stillLoaded) return Promise.resolve(true)
       return new Promise<boolean>((resolve) => {
-        loader.load(
-          '/models/metal-letter-opt.glb',
-          (g) => {
+        new TextureLoader().load(
+          STILL,
+          (t) => {
             if (disposed) return resolve(false)
-            const o = g.scene
-
-            // the environment, prepared once
-            const pmrem = new PMREMGenerator(renderer)
-            contentScene.environment = pmrem.fromEquirectangular(envTex).texture
-            pmrem.dispose()
-            envTex.dispose()
-
-            /* The hero's own material factory, not a second copy of its values.
-               Hand-copying HERO.glass here meant two definitions that could
-               drift apart; this is literally the same crystal the page builds. */
-            const crystal = createGlassMaterial()
-            o.traverse((n) => {
-              const m = n as Mesh
-              if (m.isMesh) m.material = crystal
-            })
-
-            /* Face-on. HERO.rotation stands the GLB up with +90deg about X, but
-               that compensates for the hero's own rig — against this camera,
-               which looks straight down -Z at the model, the same 90deg turned
-               the mark edge-on and it rendered as a featureless slab. Checked
-               against the render, not copied. ?rot= to re-check. */
-            o.rotation.set((num('rot', 0) * Math.PI) / 180, 0, 0)
-            /* Proportioned the way HeroSystem does it: fit on HEIGHT (not the
-               largest axis) and the same widthScale, so the mark has exactly the
-               shape it has on the page rather than a second interpretation. */
-            const box = new Box3().setFromObject(o)
-            const size = box.getSize(new Vector3())
-            const fit = size.y > 0 ? 1.5 / size.y : 1
-            o.scale.set(fit * HERO.widthScale, fit, fit)
-            o.updateMatrixWorld(true)
-            const c2 = new Box3().setFromObject(o).getCenter(new Vector3())
-            o.position.sub(c2)
-            contentPivot.add(o)
-            contentLoaded = true
+            t.colorSpace = SRGBColorSpace
+            t.minFilter = LinearFilter
+            t.magFilter = LinearFilter
+            t.generateMipmaps = false
+            t.wrapS = t.wrapT = ClampToEdgeWrapping
+            stillTex.value = t
+            screenMat.uniforms.uContent.value = t
+            stillLoaded = true
             resolve(true)
           },
           undefined,
+          // no still shipped yet: the tube just keeps showing its copy
           () => resolve(false),
         )
       })
@@ -846,7 +778,7 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
       cancelAnimationFrame(raf)
       ro?.disconnect()
       sceneRT.dispose()
-      contentRT.dispose()
+      stillTex.value?.dispose()
       window.removeEventListener('resize', onResize)
       renderer.dispose()
       renderer.forceContextLoss()

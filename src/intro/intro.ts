@@ -161,7 +161,8 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
        and the reveal can show a page that is actually ready. The tube's model
        is the hero's own file, so this warms it for the page too. */
     opts.prefetch?.()
-    void crt.loadContent()
+    // one texture, or nothing at all — see STILL in crtScene
+    const stillReady = crt.loadContent()
 
     /* The channel change: the tube pulses five times, the gaps closing and each
        pulse brighter than the last, until it blows out — and the blow-out
@@ -237,20 +238,22 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
 
     /** The lock-on: chaos snaps off, the model fades up on the glass. */
     function lock () {
-      crt.setScreenText([])
-      const t1 = performance.now()
       const DUR = 620
-      const fade = () => {
-        const p = Math.min(1, (performance.now() - t1) / DUR)
-        crt.setContentMix(p)
-        // the interference dies away completely — the mark has to be clean,
-        // because it is the same object the page is about to show
-        crt.setEnter(0.9 * (1 - p))
-        crt.setChaos(1.0 - p)
-        if (p < 1) requestAnimationFrame(fade)
-      }
-      requestAnimationFrame(fade)
-      window.setTimeout(handoff, DUR + 900)
+      stillReady.then((ok) => {
+        // with no still shipped the tube just holds its copy and hands off
+        if (!ok) { crt.setChaos(0); crt.setEnter(0.15); window.setTimeout(handoff, 600); return }
+        crt.setScreenText([])
+        const t1 = performance.now()
+        const fade = () => {
+          const p = Math.min(1, (performance.now() - t1) / DUR)
+          crt.setContentMix(p)
+          crt.setEnter(0.9 * (1 - p))
+          crt.setChaos(1.0 - p)
+          if (p < 1) requestAnimationFrame(fade)
+        }
+        requestAnimationFrame(fade)
+        window.setTimeout(handoff, DUR + 900)
+      })
     }
 
     /* 4. The hand-off. The site mounts behind the still-lit tube, then the tube
