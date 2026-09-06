@@ -53,16 +53,22 @@ const CAM_Y = num('camy', 0.15) // camera a touch above centre → slight look-d
 const MARGIN = num('margin', 1.099) // padding around the model (Size 0.91)
 const DEBUG = qs?.get('crtdebug') === '1'
 
-// The CRT screen copy.
+/* The CRT screen copy.
+
+   Colour, not white. Every line used to be some shade of white-blue, which on a
+   lamp lattice over a moving picture reads as glare rather than as type — the
+   letterforms had nothing separating them from the lit cells behind. Pulling
+   them onto the wall's own ramp (cyan / violet / pink) gives each line a hue the
+   background is not already full of. */
 const SCREEN_LINES = [
-  { t: 'ROHIT DIGGI', s: 40, c: '#eaf1ff', b: true, gap: 8 },
-  { t: 'CHANNEL 06 · PERSONAL SIGNAL', s: 19, c: '#9dc0ff', gap: 44 },
-  { t: 'WELCOME, VISITOR.', s: 23, c: '#dbe8ff', gap: 38 },
-  { t: "YOU'RE ABOUT TO SEE WHAT HAPPENS", s: 21, c: '#c2d8ff', gap: 6 },
-  { t: 'WHEN AN ENGINEER GETS BORED.', s: 21, c: '#c2d8ff', gap: 38 },
-  { t: 'AI. SOFTWARE. SYSTEMS.', s: 21, c: '#c2d8ff', gap: 6 },
-  { t: 'AND A QUESTIONABLE AMOUNT OF COFFEE.', s: 21, c: '#c2d8ff', gap: 44 },
-  { t: '[ ENTER TO TRANSMIT ]', s: 22, c: '#ffffff', b: true, gap: 0 },
+  { t: 'ROHIT DIGGI', s: 40, c: '#ff8ad4', b: true, gap: 8 },
+  { t: 'CHANNEL 06 · PERSONAL SIGNAL', s: 19, c: '#6fe3ff', gap: 44 },
+  { t: 'WELCOME, VISITOR.', s: 23, c: '#a9b6ff', gap: 38 },
+  { t: "YOU'RE ABOUT TO SEE WHAT HAPPENS", s: 21, c: '#7ce8ff', gap: 6 },
+  { t: 'WHEN AN ENGINEER GETS BORED.', s: 21, c: '#7ce8ff', gap: 38 },
+  { t: 'AI. SOFTWARE. SYSTEMS.', s: 21, c: '#7ce8ff', gap: 6 },
+  { t: 'AND A QUESTIONABLE AMOUNT OF COFFEE.', s: 21, c: '#7ce8ff', gap: 44 },
+  { t: '[ ENTER TO TRANSMIT ]', s: 22, c: '#ffc46b', b: true, gap: 0 },
 ]
 
 export type ScreenLine = { t: string; s: number; c: string; b?: boolean; gap: number }

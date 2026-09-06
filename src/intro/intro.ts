@@ -23,10 +23,10 @@ export const REVEAL = {
 /** Copy shown on the tube while it hunts for the channel. No glitch beats and
     no "SYSTEM ONLINE" — the tube just searches, then locks on. */
 const HUNT: ScreenLine[][] = [
-  [{ t: 'FINDING CHANNEL', s: 34, c: '#9dc0ff', gap: 0 }],
-  [{ t: 'FINDING CHANNEL .', s: 34, c: '#bcd4ff', gap: 0 }],
-  [{ t: 'FINDING CHANNEL . .', s: 34, c: '#dbe8ff', gap: 0 }],
-  [{ t: 'CHANNEL LOCKED', s: 36, c: '#ffffff', b: true, gap: 0 }],
+  [{ t: 'FINDING CHANNEL', s: 34, c: '#5fdcff', gap: 0 }],
+  [{ t: 'FINDING CHANNEL .', s: 34, c: '#7ce4ff', gap: 0 }],
+  [{ t: 'FINDING CHANNEL . .', s: 34, c: '#a58cff', gap: 0 }],
+  [{ t: 'CHANNEL LOCKED', s: 36, c: '#ffb545', b: true, gap: 0 }],
 ]
 
 

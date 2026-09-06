@@ -159,9 +159,14 @@ export const LED = {
       PROGRAM.glyphs,
       PROGRAM.code,
     ],
-    /** Which programme the wall comes up on — the diagonal bands, always, so the
-     *  screen always loads on the same look. */
-    startOn: PROGRAM.bands,
+    /** Which programme the wall comes up on — the glyph field, always, so the
+     *  page always arrives on the same look before the first cut. */
+    startOn: PROGRAM.glyphs,
+    /** What that first cut goes TO, once the page has arrived. Fixed rather
+     *  than random: the opening beat should be the same every time. */
+    arriveOn: PROGRAM.fieldViolet,
+    /** Beat between the page arriving and that first cut firing. */
+    arriveDelay: 0.55,
     /** Seconds a programme holds before the next one is chosen. */
     holdSeconds: 6,
     /**

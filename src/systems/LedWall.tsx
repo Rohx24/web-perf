@@ -19,6 +19,7 @@ import { LAYERS } from '../scene/layers'
 import { PANELS } from '../scene/panelConfig'
 import { ROOM } from '../scene/roomConfig'
 import { LED, PROGRAM } from './ledWallConfig'
+import { introActive, onIntroChange } from '../perf/introState'
 import { FONT_COLS, FONT_ROWS, buildCodeFont } from './codeFont'
 import {
   CODE_COLS,
@@ -537,12 +538,39 @@ export function LedWall() {
    * instant, so even the hard cut has a frame or two to move). The caller has
    * already set uProgramB and reset uProgramMix to 0.
    */
-  const beginCut = () => {
-    const type = Math.floor(Math.random() * 3)
+  const beginCut = (type = Math.floor(Math.random() * 3)) => {
     material.uniforms.uProgramSelectType.value = type
     show.current.cutDur = [0.14, 0.5, 2.2][type]
     show.current.cutting = true
   }
+
+  /* The arrival beat.
+
+     The page comes up on the glyph field and, a beat later, cuts to colour —
+     using the wipe that already exists for programme changes rather than a new
+     effect. Pinned rather than random: the first thing anyone sees should be
+     the same every time, and it is the one cut that is part of the opening
+     rather than part of the wall's ordinary rotation.
+
+     Type 1 is the wipe travelling across the arc. */
+  useEffect(() => {
+    let timer = 0
+    const arrive = () => {
+      material.uniforms.uProgramA.value = LED.programs.startOn
+      material.uniforms.uProgramB.value = LED.programs.arriveOn
+      material.uniforms.uProgramMix.value = 0
+      timer = window.setTimeout(() => {
+        beginCut(1)
+        // hand the wall back to its own scheduler afterwards
+        show.current.held = LED.programs.holdSeconds
+      }, LED.programs.arriveDelay * 1000)
+    }
+    // ?noboot=1 mounts with the intro already done, so arrive immediately
+    if (!introActive()) { arrive(); return () => window.clearTimeout(timer) }
+    const off = onIntroChange((stillUp) => { if (!stillUp) arrive() })
+    return () => { off(); window.clearTimeout(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [material])
 
   /**
    * The easter egg.
