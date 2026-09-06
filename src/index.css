@@ -1348,3 +1348,24 @@ canvas {
   text-transform: uppercase;
   color: rgba(231, 234, 246, 0.35);
 }
+
+/* Résumé download on the contact CRT — a single action, nothing else. */
+.rd-crt-cv {
+  display: inline-block;
+  margin-top: clamp(16px, 2.4vw, 26px);
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2f8;
+  text-decoration: none;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+.rd-crt-cv:hover {
+  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}

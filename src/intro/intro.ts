@@ -1,5 +1,6 @@
 import './intro.css'
 import { createCrtScene, type CrtHandle, type ScreenLine } from './crtScene'
+import { QUALITY, TIER_STORAGE_KEY, autoTier, type Tier } from '../perf/quality'
 
 
 
@@ -61,6 +62,10 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     <div class="intro-left">
       <div class="intro-title"><span class="r">Rohit</span><span class="d" data-t="DIGGI">DIGGI</span></div>
       <div class="intro-menu"></div>
+      <div class="intro-quality">
+        <span class="intro-quality-label">Quality</span>
+        <div class="intro-quality-opts"></div>
+      </div>
     </div>
     <div class="intro-scan"></div>
     <div class="intro-fade"><div class="intro-signal"></div></div>
@@ -80,6 +85,39 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
   })
   const paint = () => buttons.forEach((b, i) => b.setAttribute('aria-selected', String(i === sel)))
   paint()
+
+  /* Quality, on the title screen rather than buried in the site.
+
+     It defaults to LOW because detection kept picking a tier machines could not
+     hold, and this is the floor — so the way back up belongs here, in front of
+     the visitor, before anything heavy has been asked of their GPU. Changing it
+     reloads: dpr and the transmission buffer are read once at module load, and
+     half-applying them would be a lie. */
+  const QOPTS: { id: Tier | 'auto'; label: string }[] = [
+    { id: 'low', label: 'Low' },
+    { id: 'med', label: 'Medium' },
+    { id: 'high', label: 'High' },
+    { id: 'auto', label: 'Auto' },
+  ]
+  const qWrap = root.querySelector('.intro-quality-opts') as HTMLElement
+  for (const o of QOPTS) {
+    const b = document.createElement('button')
+    b.textContent = o.label
+    if (o.id === QUALITY.tier && QUALITY.source !== 'default') b.setAttribute('aria-current', 'true')
+    else if (o.id === 'low' && QUALITY.source === 'default') b.setAttribute('aria-current', 'true')
+    b.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const pick = o.id === 'auto' ? autoTier() : o.id
+      try {
+        localStorage.setItem(TIER_STORAGE_KEY, pick)
+        window.location.reload()
+      } catch {
+        // storage blocked (private window) — the URL is honoured too
+        window.location.search = `?tier=${pick}`
+      }
+    })
+    qWrap.appendChild(b)
+  }
 
   // --- 3D CRT ---
   const crt: CrtHandle = createCrtScene(root.querySelector('.intro-crt') as HTMLElement)
@@ -135,7 +173,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
 
   function activate () {
     const id = MENU[sel].id
-    if (id === 'resume') { window.open('/works.html', '_blank'); return } // placeholder target
+    if (id === 'resume') { window.open('/resume.html', '_blank'); return }
     runEnter(id)
   }
 

@@ -495,6 +495,11 @@ export function OutroWireframe() {
                   WhatsApp ↗
                 </a>
               </div>
+              {/* Download only. The readable version lives on the title screen;
+                  by the time anyone is down here they want the file. */}
+              <a className="rd-crt-cv" href="/resume/Rohit-Diggi-Resume.pdf" download>
+                Download résumé ↓
+              </a>
             </div>
           </div>
           <div className="rd-crt-badge">RD · 2026</div>

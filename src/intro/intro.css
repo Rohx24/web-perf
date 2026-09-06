@@ -575,6 +575,45 @@
 }
 .intro-menu button[aria-selected='true'] .car { opacity: 1; }
 
+/* Quality, under the menu on the title screen. Deliberately quieter than the
+   menu — it is an escape hatch, not a fourth choice competing with ENTER. */
+.intro-quality {
+  margin-top: clamp(26px, 3.4vw, 46px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.intro-quality-label {
+  font: 500 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(200, 208, 232, 0.35);
+}
+.intro-quality-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.intro-quality-opts button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(214, 220, 240, 0.62);
+  font: 500 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.intro-quality-opts button:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.38);
+}
+.intro-quality-opts button[aria-current='true'] {
+  color: #17121f;
+  border-color: transparent;
+  background: linear-gradient(180deg, var(--lav), #cbbdf0);
+}
+.intro-root.switching .intro-quality { opacity: 0; transition: opacity 0.3s ease; }
+
 /* ---- corner micro text ---- */
 .intro-corner {
   position: absolute;

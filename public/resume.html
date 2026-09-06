@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rohit Diggi — Résumé</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* Matched to the site: the same near-black ground, the same dot matrix, the
+   same violet→pink→blue accent ramp, the same mono section labels with a lit
+   pip and a rule running out to the measure. */
+:root {
+  --ink: #eef1fb;
+  --body: #b9c1d6;
+  --muted: #7c869e;
+  --line: #ffffff16;
+  --accent: #8b6dff;
+  --accent2: #ff5cb0;
+  --grad: linear-gradient(100deg, #ff5cb0 0%, #8b6dff 55%, #6ba8ff 100%);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--body);
+  font: 400 16px/1.62 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.045) 1px, transparent 0) 0 0 / 22px 22px,
+    radial-gradient(70% 55% at 92% 0%, rgba(255,92,176,0.07), transparent 62%),
+    radial-gradient(65% 55% at 0% 100%, rgba(139,109,255,0.09), transparent 62%),
+    #08080c;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+
+/* ---- top bar ---- */
+.bar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px clamp(20px, 5vw, 64px);
+  background: rgba(8,8,12,0.82);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+}
+.mark {
+  font: 700 18px/1 'Space Grotesk', sans-serif; letter-spacing: 0.12em;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-decoration: none;
+}
+.bar-actions { display: flex; align-items: center; gap: 10px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 999px; text-decoration: none;
+  font: 600 12px/1 'Space Grotesk', sans-serif; letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid #ffffff26; color: var(--ink); background: #ffffff0a;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+.btn:hover { border-color: #ffffff5c; background: #ffffff14; transform: translateY(-1px); }
+.btn--primary { border-color: transparent; background: var(--grad); color: #12091f; }
+.btn--primary:hover { filter: brightness(1.08); }
+
+/* ---- layout ---- */
+.wrap { max-width: 60rem; margin: 0 auto; padding: clamp(34px, 6vw, 76px) clamp(20px, 5vw, 64px) 100px; }
+
+.head h1 {
+  margin: 0 0 10px;
+  font: 700 clamp(2.1rem, 6vw, 3.5rem)/1.03 'Space Grotesk', sans-serif;
+  letter-spacing: -0.02em;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.head .role { margin: 0 0 18px; color: var(--ink); font-weight: 600; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 clamp(30px, 5vw, 48px);
+  font: 500 12.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+.meta a { color: var(--accent); text-decoration: none; }
+.meta a:hover { text-decoration: underline; }
+
+section { margin-bottom: clamp(34px, 5vw, 54px); }
+.label {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+  font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent);
+}
+.label::before { content:''; width:7px; height:7px; flex:none; border-radius:1px; background: var(--grad);
+  box-shadow: 0 0 10px #8b6dff88; }
+.label::after { content:''; flex:1; height:1px; background: linear-gradient(90deg, #8b6dff55, transparent); }
+
+p { margin: 0 0 14px; max-width: 46rem; }
+
+.item { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.item:last-child { border-bottom: 0; }
+.item-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 18px; }
+.item h3 { margin: 0; font: 600 clamp(1rem, 1.5vw, 1.16rem)/1.35 'Space Grotesk', sans-serif; color: var(--ink); }
+.when { font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; color: var(--muted); white-space: nowrap; }
+.stack { margin: 7px 0 10px; font: 500 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent2); }
+.stack a { color: var(--accent); }
+.item ul { margin: 0; padding-left: 18px; }
+.item li { margin-bottom: 6px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.card {
+  padding: 16px 18px; border: 1px solid #ffffff1a; border-radius: 12px;
+  background: linear-gradient(160deg, #ffffff0d, #ffffff05);
+}
+.card h4 { margin: 0 0 6px; font: 500 10px/1 ui-monospace, monospace; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted); }
+.card p { margin: 0; font-size: 14px; color: var(--ink); }
+
+.foot { margin-top: 46px; padding-top: 20px; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;
+  font: 500 11px/1 ui-monospace, monospace; letter-spacing: 0.1em; color: var(--muted); }
+
+@media print {
+  body { background: #fff; color: #111; }
+  .bar, .foot .btn { display: none; }
+  .head h1, .mark { -webkit-text-fill-color: #111; color: #111; }
+  .card { border-color: #ddd; background: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="mark" href="/">RD</a>
+  <div class="bar-actions">
+    <a class="btn" href="/">← Back to site</a>
+    <a class="btn btn--primary" href="/resume/Rohit-Diggi-Resume.pdf" download>Download PDF</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="head">
+    <h1>Rohit Jaysheel Diggi</h1>
+    <p class="role">B.Tech (Hons.) CSE — AI &amp; ML, RV University</p>
+    <div class="meta">
+      <span>Bengaluru, Karnataka</span>
+      <a href="mailto:rohitdiggi@outlook.com">rohitdiggi@outlook.com</a>
+      <a href="tel:+918861502347">+91 88615 02347</a>
+      <a href="https://github.com/Rohx24" target="_blank" rel="noreferrer">GitHub ↗</a>
+      <a href="https://linkedin.com/in/rohit-j-d-b38069302" target="_blank" rel="noreferrer">LinkedIn ↗</a>
+    </div>
+  </header>
+
+  <section>
+    <span class="label">01 — Summary</span>
+    <p>
+      Final-year B.Tech (Hons.) CSE (AI/ML) student building agentic AI systems, full-stack
+      applications and networking research, with several projects deployed live and in active use.
+      I pick the architecture to fit the decision: parallel LLM agents where a call needs real
+      judgment, deterministic pipelines where it needs to be reproducible and auditable.
+    </p>
+    <p>
+      Currently a Research Assistant studying next-generation intra-AS routing protocols on the
+      FABRIC testbed under faculty guidance. Actively seeking SDE / AI Engineering roles.
+    </p>
+  </section>
+
+  <section>
+    <span class="label">02 — Education</span>
+    <div class="item">
+      <div class="item-top">
+        <h3>RV University — B.Tech (Hons.), CSE (AI &amp; Machine Learning)</h3>
+        <span class="when">2023 — 2027</span>
+      </div>
+      <div class="stack">CGPA 8.06 / 10</div>
+    </div>
+  </section>
+
+  <section>
+    <span class="label">03 — Experience</span>
+
+    <div class="item">
+      <div class="item-top">
+        <h3>Research Assistant — EIBP Protocol, Rochester Institute of Technology (Remote)</h3>
+        <span class="when">Feb 2026 — Aug 2027</span>
+      </div>
+      <div class="stack">Routing protocols · MNLR · FABRIC testbed</div>
+      <ul>
+        <li>Researching EIBP, a next-generation intra-AS routing protocol built on MNLR, under Prof. Nirmala Shenoy; benchmarked against OSPF for failure-detection speed and control overhead.</li>
+        <li>Deployed and validated the protocol on the FABRIC national research testbed, running the first successful 13-node experiment and measuring convergence time, failure recovery and control overhead.</li>
+      </ul>
+    </div>
+
+    <div class="item">
+      <div class="item-top">
+        <h3>Cybersecurity Intern, RV University</h3>
+        <span class="when">Jun — Jul 2025</span>
+      </div>
+      <div class="stack">Random Forest · Isolation Forest · Bloom filters · Dash/Plotly</div>
+      <ul>
+        <li>Built an anomaly-detection pipeline combining Random Forest, Isolation Forest, entropy filtering and Bloom filters, with a live traffic-simulation dashboard.</li>
+        <li>Co-authored the resulting work into a paper accepted at an international conference (SWSIoT-2025, in association with Springer).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <span class="label">04 — Projects</span>
+
+    <div class="item">
+      <div class="item-top">
+        <h3>Multi-Signal Risk Assessment — Parallel Agentic AI System</h3>
+        <span class="when">Apr 2026</span>
+      </div>
+      <div class="stack">Relevance AI · Agentic AI · Workflow orchestration —
+        <a href="https://prism-risk-rho.vercel.app" target="_blank" rel="noreferrer">live demo ↗</a></div>
+      <ul>
+        <li>Four-agent parallel system (Description, Location, Historical Claims, Safety) evaluating risk signals simultaneously and aggregating them into a final classification.</li>
+        <li>Conflict-resolution logic reconciling contradictory agent outputs with explainable justifications and confidence scores.</li>
+      </ul>
+    </div>
+
+    <div class="item">
+      <div class="item-top">
+        <h3>AI Boardroom — Multi-Agent Startup Idea Evaluator</h3>
+        <span class="when">Jul 2026</span>
+      </div>
+      <div class="stack">Agentic AI · LLMs · Multi-agent orchestration —
+        <a href="https://aiboardroom-seven.vercel.app" target="_blank" rel="noreferrer">live demo ↗</a></div>
+      <ul>
+        <li>Solo multi-agent system simulating a boardroom of 9 AI personas (CEO, VC-Skeptic, Security Lead and six more) debating a submitted startup idea from distinct viewpoints.</li>
+        <li>Orchestration layer synthesising each agent's critique into a single scored verdict with reasoning.</li>
+      </ul>
+    </div>
+
+    <div class="item">
+      <div class="item-top">
+        <h3>Satark.ai — Agentic Honeypot API for Scam Detection</h3>
+        <span class="when">Jan — Feb 2026</span>
+      </div>
+      <div class="stack">GPT-4.1-mini · Node.js · Express — Top 8 nationwide, HCL GUVI AI Impact Summit 2026 ·
+        <a href="https://adaptive-honeypot-agent.vercel.app" target="_blank" rel="noreferrer">live demo ↗</a></div>
+      <ul>
+        <li>Conversational agent that engages scam callers to extract phone numbers, bank details and tactics, using custom "Bridge Logic" prompt engineering to hold cover while extracting intel.</li>
+        <li>Shipped as a modular Node.js/Express API with separate detection, extraction and engagement logic; deployed live on Railway.</li>
+      </ul>
+    </div>
+
+    <div class="item">
+      <div class="item-top">
+        <h3>BhashaBuddy — AI Language-Learning Platform for NRI Children</h3>
+        <span class="when">Dec 2025 — Feb 2026</span>
+      </div>
+      <div class="stack">React · Vite · Supabase · OpenAI API · TTS —
+        <a href="https://parampara-one.vercel.app" target="_blank" rel="noreferrer">live demo ↗</a></div>
+      <ul>
+        <li>Full-stack platform teaching NRI children their native language through interactive lessons, using OpenAI's API for conversational practice and TTS for pronunciation feedback.</li>
+        <li>Shipped with Supabase auth and progress tracking, with an active live user base on Vercel.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <span class="label">05 — Technical skills</span>
+    <div class="grid">
+      <div class="card"><h4>Languages</h4><p>C, Python, Kotlin, JavaScript, TypeScript</p></div>
+      <div class="card"><h4>AI / ML</h4><p>LLM integration, prompt engineering, RAG, agentic AI</p></div>
+      <div class="card"><h4>Backend</h4><p>Python, Node.js/Express, REST APIs, PostgreSQL/Supabase, SQL, JSON/JSONB</p></div>
+      <div class="card"><h4>Tools</h4><p>Git, Android SDK</p></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="label">06 — Achievements &amp; certifications</span>
+    <div class="item">
+      <ul>
+        <li>Co-authored a paper on real-time DDoS detection using ML and entropy analysis, accepted at SWSIoT-2025 (Springer).</li>
+        <li>1st Prize for "Traffic Management System" at Avishkar, an inter-college exhibition (ISTE / IEEE).</li>
+        <li>Affective Computing — NPTEL (90/100) · Software Testing — NPTEL (Elite + Top 1%).</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>RD · 2026 · Bengaluru, IN</span>
+    <a class="btn btn--primary" href="/resume/Rohit-Diggi-Resume.pdf" download>Download PDF</a>
+  </div>
+</div>
+
+</body>
+</html>
