@@ -7,13 +7,28 @@ import { MathUtils } from 'three'
  * exactly as authored.
  */
 export const HERO = {
-  /* ?hero=/models/metal-letter-20.glb swaps the mark for a decimated build, so
-     densities can be compared in the real material and lighting rather than in
-     a viewer. Dev affordance only; nothing reads it in normal use. */
+  /**
+   * The mark, decimated to 6% of the source's density.
+   *
+   * The original is 465,812 triangles across 12 meshes — 99.3% of every
+   * triangle the site draws, against 3,336 for the entire room, wall, panels,
+   * grid, typography, glass and frames combined. Measured, thinning it is the
+   * only change that removes the frame-time tail: lowering transmission
+   * resolution does nothing, and turning transmission off entirely helps less.
+   *
+   * This build is 27,947 triangles in ONE draw call (every imported material is
+   * replaced below by a single shared glass material, so the source's 12 draw
+   * calls and 36 textures were both paying for nothing), and 0.25 MB against
+   * 2.37 MB. Geometric error is 0.06%.
+   *
+   * ?hero=/models/metal-letter-opt.glb puts the original back for comparison;
+   * the 50/30/20/12% builds are alongside it, and /compare.html shows the
+   * ladder side by side. scripts/decimate-hero.mjs regenerates them.
+   */
   url:
     (typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).get('hero')) ||
-    '/models/metal-letter-opt.glb',
+    '/models/metal-letter-06.glb',
 
   /**
    * On the camera's view axis, set back into the room so the wall sits close
