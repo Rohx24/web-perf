@@ -694,6 +694,14 @@
   to { opacity: 0; }
 }
 
+/* During the reveal this layer has to be see-through, or the front wipes it
+   away to reveal the intro's own black rather than the page. */
+.intro-root.revealing { background: transparent; }
+.intro-root.revealing .intro-stage,
+.intro-root.revealing .intro-scan,
+.intro-root.revealing .intro-grade,
+.intro-root.revealing .intro-roll { display: none; }
+
 /* ENTER transition overlay */
 .intro-fade {
   position: absolute;

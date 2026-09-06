@@ -11,7 +11,6 @@ import {
   LinearFilter,
   Mesh,
   MeshBasicMaterial,
-  MeshPhysicalMaterial,
   PerspectiveCamera,
   OrthographicCamera,
   PlaneGeometry,
@@ -27,6 +26,8 @@ import {
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
+import { createGlassMaterial } from '../systems/GlassMaterial'
+import { HERO } from '../systems/heroConfig'
 
 const MODEL = '/crt/crt_tv.glb'
 
@@ -232,48 +233,39 @@ const warpFrag = /* glsl */ `
   uniform vec2 uCenter;   // where the glass is on screen, in uv
   varying vec2 vUv;
 
+  #define PI 3.14159265359
+
+  /* Alche's finalCompositeFrag, ported.
+
+     Theirs is four lines and no chromatic aberration at all — the rainbow on
+     their site is mainLogoFrag, a glass material on the logo MESH, which is a
+     different effect entirely. Copying it into a full-screen pass is what
+     turned this into a purple smear.
+
+       r        = one circular front, its edge softening as it travels
+       sin(r*PI)= a single radial push, zero at both ends, peaking at the front
+       alpha    = the same front, wiping this layer off the page beneath
+
+     They crossfade to the destination as a texture. We cannot sample the hero
+     (separate context), so the front drives ALPHA instead and the page shows
+     through — same wipe, same wave, no second texture. The destination's 2x-to-
+     1:1 settle is done as a CSS transform on the page itself. */
   void main () {
     float asp = uRes.x / max(1.0, uRes.y);
-    // measured from the glass, not the middle of the window — the bubble has to
-    // look like it came out of the tube
-    vec2 c = vUv - uCenter;
-    c.x *= asp;
-    float d = length(c);
-    vec2 dir = d > 0.0001 ? c / d : vec2(0.0);
+    vec2 cuv = vUv - uCenter;
+    cuv.x *= asp;
 
     float p = clamp(uProg, 0.0, 1.0);
-    // the front races outward, well past the corners
-    float R = p * 2.3;
-    // 1 well inside the bubble, 0 outside; the transition band is the skin
-    float inside = smoothstep(R, R - 0.30, d);
-    // a bright travelling skin at the wavefront
-    float shell = exp(-pow((d - R) * 5.5, 2.0));
-    // and everything relaxes as it finishes, so the picture settles flat
-    float settle = 1.0 - smoothstep(0.68, 1.0, p);
+    float r = smoothstep(0.0, 0.2 + p * 0.7, -length(cuv) + p * 1.4);
 
-    // the lens: magnifies what is inside the bubble, strongest near the front
-    vec2 warped = c * (1.0 - inside * settle * 0.34 / (1.0 + d * d * 2.6));
-    // the wave riding out with it
-    warped += dir * sin(d * 22.0 - p * 24.0) * 0.016 * settle * (inside * 0.6 + shell);
-    warped.x /= asp;
-    vec2 uv = warped + uCenter;
+    vec2 push = sin(r * PI) * normalize(cuv + 1e-6) * 0.1;
+    push.x /= asp;
+    vec2 uv = vUv - push;
 
-    /* Chromatic split, concentrated on the skin — the three channels at 1x, 2x
-       and 4x the same offset, which is the asymmetry that makes it read as
-       glass rather than a symmetric rainbow. */
-    float ab = (shell * 0.9 + inside * 0.22) * 0.018 * settle;
-    vec2 d2 = vec2(dir.x / asp, dir.y);
-    vec4 cr = texture2D(uTex, uv - d2 * ab);
-    vec4 cg = texture2D(uTex, uv - d2 * ab * 2.0);
-    vec4 cb = texture2D(uTex, uv - d2 * ab * 4.0);
-    vec3 col = vec3(cr.r, cg.g, cb.b);
-    float a = max(cr.a, max(cg.a, cb.a));
-
-    // the wavefront itself glows
-    col += vec3(0.62, 0.76, 1.0) * shell * 0.85 * settle;
-    a = max(a, shell * 0.85 * settle);
-
-    gl_FragColor = vec4(col, a);
+    vec4 col = texture2D(uTex, uv);
+    // the outgoing layer is wiped off on the same front that carries the wave
+    float a = col.a * (1.0 - smoothstep(0.0, 0.5, r));
+    gl_FragColor = vec4(col.rgb, a);
   }
 `
 
@@ -316,6 +308,13 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
   renderer.outputColorSpace = SRGBColorSpace
   renderer.toneMapping = ACESFilmicToneMapping
   renderer.toneMappingExposure = num('exp', 0.7)
+  /* The mark is transmissive, and a transmissive material makes three render
+     the scene again into a transmission buffer every frame. Alche sidestep that
+     cost entirely by hand-rolling the refraction in mainLogoFrag rather than
+     using a physical transmission pass. Three's equivalent lever is the
+     resolution of that buffer — on a mark this size inside a 448px tube buffer,
+     a third of full res is indistinguishable and roughly a tenth of the work. */
+  renderer.transmissionResolutionScale = num('trans', 0.34)
   renderer.setClearColor(0x000000, 0) // transparent → the room plate shows through
   container.appendChild(renderer.domElement)
   renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block'
@@ -345,9 +344,9 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
      The model is the same file the hero uses, so pulling it here warms the
      cache for the page we are about to reveal rather than costing an extra
      download. */
-  const contentRT = new WebGLRenderTarget(512, 390)
+  const contentRT = new WebGLRenderTarget(448, 341)
   const contentScene = new Scene()
-  const contentCam = new PerspectiveCamera(30, 512 / 390, 0.1, 50)
+  const contentCam = new PerspectiveCamera(30, 448 / 341, 0.1, 50)
   contentCam.position.set(0, 0, 3.2)
   contentScene.add(new AmbientLight(0x8a93c8, 1.1))
   const cKey = new DirectionalLight(0xffc0e0, 2.6)
@@ -712,30 +711,10 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
             pmrem.dispose()
             envTex.dispose()
 
-            /* The same cast-crystal material the hero uses, values copied from
-               HERO.glass. The point is that the mark on the tube and the mark on
-               the page are the same object, so the reveal has nothing to
-               reconcile. */
-            const crystal = new MeshPhysicalMaterial({
-              transmission: 1,
-              ior: 1.52,
-              thickness: 4.6,
-              roughness: 0.1,
-              metalness: 0,
-              clearcoat: 1,
-              clearcoatRoughness: 0.04,
-              reflectivity: 1,
-              envMapIntensity: 1.6,
-              attenuationDistance: 4.4,
-              attenuationColor: 0x6a3cff,
-              iridescence: 1,
-              iridescenceIOR: 1.35,
-              iridescenceThicknessRange: [180, 940],
-              sheen: 1,
-              sheenRoughness: 0.5,
-              sheenColor: 0xff6cc0,
-              color: 0xffffff,
-            })
+            /* The hero's own material factory, not a second copy of its values.
+               Hand-copying HERO.glass here meant two definitions that could
+               drift apart; this is literally the same crystal the page builds. */
+            const crystal = createGlassMaterial()
             o.traverse((n) => {
               const m = n as Mesh
               if (m.isMesh) m.material = crystal
@@ -747,10 +726,13 @@ export function createCrtScene (container: HTMLElement): CrtHandle {
                the mark edge-on and it rendered as a featureless slab. Checked
                against the render, not copied. ?rot= to re-check. */
             o.rotation.set((num('rot', 0) * Math.PI) / 180, 0, 0)
+            /* Proportioned the way HeroSystem does it: fit on HEIGHT (not the
+               largest axis) and the same widthScale, so the mark has exactly the
+               shape it has on the page rather than a second interpretation. */
             const box = new Box3().setFromObject(o)
             const size = box.getSize(new Vector3())
-            const fit = 1.62 / Math.max(size.x, size.y, size.z)
-            o.scale.set(fit * 1.22, fit, fit)
+            const fit = size.y > 0 ? 1.5 / size.y : 1
+            o.scale.set(fit * HERO.widthScale, fit, fit)
             o.updateMatrixWorld(true)
             const c2 = new Box3().setFromObject(o).getCenter(new Vector3())
             o.position.sub(c2)

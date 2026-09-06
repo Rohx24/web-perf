@@ -4,6 +4,14 @@ import { createCrtScene, type CrtHandle, type ScreenLine } from './crtScene'
 
 
 
+/** The reveal, in one place so it can be dialled from ?tune=1. */
+export const REVEAL = {
+  /** how long the front takes to cross the screen */
+  dur: 3000,
+  /** the page arrives magnified and settles to 1:1, as Alche's does */
+  zoom: 1.6,
+}
+
 /** Copy shown on the tube while it hunts for the channel. No glitch beats and
     no "SYSTEM ONLINE" — the tube just searches, then locks on. */
 const HUNT: ScreenLine[][] = [
@@ -250,33 +258,46 @@ export function startIntro (opts: { onEnter: (target: string) => void; prefetch?
        bright horizontal line, the line snaps to a point — and the hero is simply
        already there behind it. Much better than fading through black, and it
        ends the intro on the same piece of hardware it started on. */
-    /* 4. The sign-off. The site mounts behind the still-lit tube, then the whole
-       picture is swallowed by one spherical swell — the frame balloons, a ring
-       stretches out through it, the channels smear apart at the edges — and the
-       zoom drives through into the hero, which is already sitting there. */
+    /* 4. The reveal. The page mounts UNDERNEATH the tube first, then one
+       expanding front wipes this layer off it — so the bubble starts on the
+       glass and finishes on the hero, rather than playing out on the tube and
+       then cutting. Alche crossfade to the page as a texture; we cannot sample
+       it from another context, so the front drives this layer's alpha instead
+       and the page shows through. Their destination settles from 2x to 1:1 as
+       it arrives — that is the CSS scale below, on the page itself. */
     function handoff () {
       opts.onEnter(target)
+      root.classList.add('revealing')
+
+      const host = document.getElementById('root')
+      if (host) {
+        host.style.transformOrigin = '50% 50%'
+        host.style.transform = `scale(${REVEAL.zoom})`
+        // easeOutCubic, the easing their "loaded" tween uses
+        host.style.transition = `transform ${REVEAL.dur}ms cubic-bezier(0.215, 0.61, 0.355, 1)`
+        requestAnimationFrame(() => { host.style.transform = 'scale(1)' })
+      }
+
       const t2 = performance.now()
-      const DUR = 1500 // long enough that the bubble visibly settles, not just pops
+      const easeOutCubic = (x: number) => 1 - Math.pow(1 - x, 3)
+      let done = false
       const swell = () => {
-        const p = Math.min(1, (performance.now() - t2) / DUR)
-        crt.setWarp(p)
+        const p = Math.min(1, (performance.now() - t2) / REVEAL.dur)
+        crt.setWarp(easeOutCubic(p))
         if (p < 1) { requestAnimationFrame(swell); return }
-        root.classList.add('signing-off')
-        window.setTimeout(() => {
-          crt.dispose()
-          window.setTimeout(cleanup, 480)
-        }, 460)
+        finish()
       }
       requestAnimationFrame(swell)
       // timers survive a hidden tab where rAF does not
-      window.setTimeout(() => {
-        if (!root.classList.contains('signing-off')) {
-          crt.setWarp(1)
-          root.classList.add('signing-off')
-          window.setTimeout(() => { crt.dispose(); window.setTimeout(cleanup, 480) }, 460)
-        }
-      }, DUR + 400)
+      window.setTimeout(finish, REVEAL.dur + 500)
+
+      function finish () {
+        if (done) return
+        done = true
+        if (host) { host.style.transition = ''; host.style.transform = ''; host.style.transformOrigin = '' }
+        crt.dispose()
+        cleanup()
+      }
     }
   }
 }
