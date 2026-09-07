@@ -19,6 +19,9 @@ import {
   CanvasTexture,
   FramebufferTexture,
   LinearFilter,
+  LinearMipmapLinearFilter,
+  OrthographicCamera,
+  WebGLRenderTarget,
   Color,
   DirectionalLight,
   Group,
@@ -83,7 +86,6 @@ function fit(source: Group): { group: Group; tris: number; verts: number; draws:
     const mesh = child as Mesh
     if (!mesh.isMesh) return
     mesh.material = material
-    if (SCREEN) mesh.renderOrder = 101
     draws += 1
     const g = mesh.geometry
     tris += (g.index ? g.index.count : g.attributes.position.count) / 3
@@ -154,7 +156,7 @@ async function main() {
       const bh = Math.max(2, Math.round(h * pr))
       frameTex.image = { width: bw, height: bh } as unknown as HTMLImageElement
       frameTex.needsUpdate = true
-      ;(material as unknown as ScreenGlassMaterial).setSceneTexture(frameTex, bw, bh)
+      ;(material as unknown as ScreenGlassMaterial).setSceneTexture(blurred!.texture, bw, bh)
     }
   }
 
@@ -169,17 +171,41 @@ async function main() {
   /* The same sentinel as HeroSystem: a zero-size mesh drawn before the mark,
      copying the frame so far into a texture the mark refracts. */
   let frameTex: FramebufferTexture | null = null
+  let blurred: WebGLRenderTarget | null = null
   if (SCREEN) {
     frameTex = new FramebufferTexture(2, 2)
     frameTex.minFilter = LinearFilter
     frameTex.magFilter = LinearFilter
+    blurred = new WebGLRenderTarget(512, 512, {
+      minFilter: LinearMipmapLinearFilter,
+      magFilter: LinearFilter,
+      generateMipmaps: true,
+      depthBuffer: false,
+      stencilBuffer: false,
+    })
+    const blitScene = new Scene()
+    const blitCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
+    blitScene.add(new Mesh(
+      new PlaneGeometry(2, 2),
+      new MeshBasicMaterial({ map: frameTex, depthTest: false, depthWrite: false }),
+    ))
     const sentinel = new Mesh(
       new PlaneGeometry(0, 0),
       new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
     )
     sentinel.frustumCulled = false
-    sentinel.renderOrder = 100
-    sentinel.onBeforeRender = (r) => { r.copyFramebufferToTexture(frameTex!) }
+    sentinel.renderOrder = -1000
+    sentinel.onBeforeRender = (r) => {
+      r.copyFramebufferToTexture(frameTex!)
+      // three resets info at the top of every render(), nested included
+      const autoReset = r.info.autoReset
+      r.info.autoReset = false
+      const prev = r.getRenderTarget()
+      r.setRenderTarget(blurred)
+      r.render(blitScene, blitCam)
+      r.setRenderTarget(prev)
+      r.info.autoReset = autoReset
+    }
     scene.add(sentinel)
   }
 

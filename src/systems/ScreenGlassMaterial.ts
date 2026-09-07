@@ -84,8 +84,8 @@ export class ScreenGlassMaterial extends ShaderMaterial {
    * samples something entirely unrelated to what sits behind it and the mark
    * goes blotchy. Scaled to roughly a third of that.
    */
-  get thickness(): number { return this.uniforms.uRefractPower.value / 0.0075 }
-  set thickness(v: number) { this.uniforms.uRefractPower.value = v * 0.0075 }
+  get thickness(): number { return this.uniforms.uRefractPower.value / 0.019 }
+  set thickness(v: number) { this.uniforms.uRefractPower.value = v * 0.019 }
 
   /** Index of refraction → how far apart R, G and B land. */
   get ior(): number { return this.uniforms.uDispersion.value / 2 + 1 }

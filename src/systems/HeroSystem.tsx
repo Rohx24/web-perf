@@ -6,10 +6,14 @@ import {
   FramebufferTexture,
   Group,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Mesh,
   MeshBasicMaterial,
+  OrthographicCamera,
   PlaneGeometry,
+  Scene,
   Vector3,
+  WebGLRenderTarget,
 } from 'three'
 import type { MeshPhysicalMaterial } from 'three'
 
@@ -46,9 +50,19 @@ function CrystalLogo() {
 
   /* The capture.
    *
-   * A zero-size mesh drawn just before the mark, whose only job is to copy the
-   * frame so far into a texture the mark can sample. This is Alche's sentinel:
-   * one blit, where transmission would have re-rendered the entire scene.
+   * A zero-size mesh drawn just before the mark, whose only job is to hand the
+   * frame so far to the mark. This is Alche's sentinel: one blit, where
+   * transmission would have re-rendered the entire scene.
+   *
+   * TWO steps, and the second is the one that matters. The raw grab is a
+   * pixel-for-pixel copy of the canvas, and sampling that directly is what made
+   * the mark read as ice: at any given fragment it could only ever see the one
+   * pixel directly behind it, so it never gathered light and never blurred.
+   *
+   * Alche's buffer is 512x512 — far below their canvas — and that downsample IS
+   * their roughness blur. So the grab is blitted down into a small mipmapped
+   * target, and the glass samples that. Costs one 0.26MP pass; buys the whole
+   * look.
    *
    * It has to be in the transparent queue with a renderOrder below the mark's,
    * so the opaque room, wall and panels are already on the buffer when it runs
@@ -58,6 +72,20 @@ function CrystalLogo() {
     const texture = new FramebufferTexture(2, 2)
     texture.minFilter = LinearFilter
     texture.magFilter = LinearFilter
+
+    // Alche's number. Mipmapped so roughness has levels to reach for.
+    const blurred = new WebGLRenderTarget(512, 512, {
+      minFilter: LinearMipmapLinearFilter,
+      magFilter: LinearFilter,
+      generateMipmaps: true,
+      depthBuffer: false,
+      stencilBuffer: false,
+    })
+    const blitScene = new Scene()
+    const blitCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
+    const blitMat = new MeshBasicMaterial({ map: texture, depthTest: false, depthWrite: false })
+    blitScene.add(new Mesh(new PlaneGeometry(2, 2), blitMat))
+
     const sentinel = new Mesh(
       new PlaneGeometry(0, 0),
       new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
@@ -72,8 +100,22 @@ function CrystalLogo() {
     sentinel.renderOrder = -1000
     sentinel.onBeforeRender = (renderer) => {
       renderer.copyFramebufferToTexture(texture)
+      /* Down to 512 and back out. setRenderTarget(null) is what makes three
+         regenerate the mip chain, so this has to bracket the render.
+
+         autoReset off across it because three calls info.reset() at the top of
+         EVERY render(), nested ones included — leave it on and this wipes the
+         frame's draw-call and triangle counts halfway through, so the stats HUD
+         quietly under-reports. */
+      const autoReset = renderer.info.autoReset
+      renderer.info.autoReset = false
+      const prev = renderer.getRenderTarget()
+      renderer.setRenderTarget(blurred)
+      renderer.render(blitScene, blitCam)
+      renderer.setRenderTarget(prev)
+      renderer.info.autoReset = autoReset
     }
-    return { texture, sentinel }
+    return { texture, blurred, blitMat, sentinel }
   }, [])
 
   useEffect(() => {
@@ -83,11 +125,14 @@ function CrystalLogo() {
     // FramebufferTexture copies 1:1, so it has to match the drawing buffer
     capture.texture.image = { width: w, height: h } as unknown as HTMLImageElement
     capture.texture.needsUpdate = true
-    ;(material as ScreenGlassMaterial).setSceneTexture(capture.texture, w, h)
+    // the mark samples the BLURRED target, never the raw grab
+    ;(material as ScreenGlassMaterial).setSceneTexture(capture.blurred.texture, w, h)
   }, [capture, material, size, viewportDpr])
 
   useEffect(() => () => {
     capture?.texture.dispose()
+    capture?.blurred.dispose()
+    capture?.blitMat.dispose()
     capture?.sentinel.geometry.dispose()
     ;(capture?.sentinel.material as MeshBasicMaterial | undefined)?.dispose()
   }, [capture])
