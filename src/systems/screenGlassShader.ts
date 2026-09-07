@@ -127,14 +127,17 @@ export const screenGlassFrag = /* glsl */ `
     /* Stain it the way Beer-Lambert absorption did: the tint survives, its
        complement is absorbed, and deeper through the body means more of both. */
     float depth = 1.0 - abs(normal.z);
-    vec3 absorb = mix(vec3(1.0), uBodyColor, 0.55 + depth * 0.25);
-    vec3 c = refracted * absorb * 2.6;
+    vec3 absorb = mix(vec3(1.0), uBodyColor, 0.35 + depth * 0.2);
+    vec3 c = refracted * absorb * 3.2;
 
     /* The block is LIT by the room, not merely a window onto it. The physical
        material got this from scatter across a rough interior plus sheen; both
-       are gone here, so it has to be stated. Without it the mark reads black,
-       because the wall it refracts is mostly unlit gaps between dots. */
-    c += uBodyColor * 0.17 * (0.6 + depth);
+       are gone here, so it has to be stated.
+
+       Kept low on purpose: this term is flat, so every unit of it is contrast
+       removed from the refraction. Too much and the wall's dots stop reading
+       through the glass, which is most of what makes it look like glass. */
+    c += uBodyColor * 0.06 * (0.6 + depth);
 
     /* One key light, view space, matching the scene's directional.
 
