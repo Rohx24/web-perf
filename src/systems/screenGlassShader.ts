@@ -103,14 +103,14 @@ export const screenGlassFrag = /* glsl */ `
     vec3 refracted = vec3(0.0);
     for (int i = 0; i < SAMPLES; i++) {
       float fi = float(i);
-      float slide = (0.005 + random(sUv + fi * 0.2) * 0.007) * uDispersion;
+      float slide = (0.0016 + random(sUv + fi * 0.2) * 0.0022) * uDispersion;
       /* Alche jitter by rough*0.3, but they refract a smooth scene. Ours is a
-         lattice of hard dots, and a per-pixel random offset across it is
-         salt-and-pepper rather than roughness -- so this stays small. */
-      vec2 jitter = vec2(
-        random(sUv + fi * 0.1) - 0.5,
-        random(sUv + fi * 0.2) - 0.5
-      ) * rough * 0.06;
+         lattice of hard dots, and an independent random offset per pixel across
+         that is white noise, not roughness — it was the mottling over the mark.
+         Rotating a fixed offset per sample keeps the softening without the
+         per-pixel randomness. */
+      float a = fi * 2.399963 + random(floor(sUv * 180.0)) * 6.2831;
+      vec2 jitter = vec2(cos(a), sin(a)) * rough * 0.02;
       vec2 base = jitter + sUv;
       // 1x / 2x / 4x is what splits the channels — this is the dispersion
       vec2 uvR = base - refractNormal * (uRefractPower + slide * 1.0);

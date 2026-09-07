@@ -76,9 +76,16 @@ export class ScreenGlassMaterial extends ShaderMaterial {
 
   // --- MeshPhysicalMaterial's surface, mapped onto the uniforms -------------
 
-  /** Depth of the block → how far the screen-space bend reaches. */
-  get thickness(): number { return this.uniforms.uRefractPower.value / 0.022 }
-  set thickness(v: number) { this.uniforms.uRefractPower.value = v * 0.022 }
+  /**
+   * Depth of the block → how far the screen-space bend reaches, in screen UV.
+   *
+   * Alche's 0.1 is a tenth of the screen, which is fine for a logo that covers
+   * a small part of it. Ours fills the viewport, so at 0.1 each fragment
+   * samples something entirely unrelated to what sits behind it and the mark
+   * goes blotchy. Scaled to roughly a third of that.
+   */
+  get thickness(): number { return this.uniforms.uRefractPower.value / 0.0075 }
+  set thickness(v: number) { this.uniforms.uRefractPower.value = v * 0.0075 }
 
   /** Index of refraction → how far apart R, G and B land. */
   get ior(): number { return this.uniforms.uDispersion.value / 2 + 1 }
