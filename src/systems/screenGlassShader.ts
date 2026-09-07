@@ -161,6 +161,12 @@ export const screenGlassFrag = /* glsl */ `
     float F = fresnel(ang);
     c += uSheenColor * F * uEnvIntensity * 0.28;
 
+    /* The page renders flat — no tone mapping — so anything above 1 clips to a
+       hard white patch. That is what a bright project pane behind the mark did:
+       refract something near-white, multiply it, and lose the whole area. Roll
+       the highlights off instead of letting them clip. */
+    c = c / (1.0 + max(c - 0.8, vec3(0.0)) * 1.1);
+
     gl_FragColor = vec4(c, uOpacity);
   }
 `

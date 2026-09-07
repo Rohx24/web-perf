@@ -63,7 +63,13 @@ function CrystalLogo() {
       new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
     )
     sentinel.frustumCulled = false
-    sentinel.renderOrder = 100
+    /* First in the transparent queue, which begins only after every opaque
+       object has drawn — so the capture holds the room, wall, panels and grid,
+       and the mark keeps its own renderOrder rather than being forced above the
+       project panes (renderOrder 12) and floating in front of them. Alche use
+       100 because their scene has nothing transparent below the logo; ours
+       does. */
+    sentinel.renderOrder = -1000
     sentinel.onBeforeRender = (renderer) => {
       renderer.copyFramebufferToTexture(texture)
     }
@@ -118,8 +124,6 @@ function CrystalLogo() {
     instance.traverse((child) => {
       if ((child as Mesh).isMesh) {
         ;(child as Mesh).material = material
-        // after the sentinel, so the capture holds the scene without the mark
-        if (SCREEN_GLASS) (child as Mesh).renderOrder = 101
       }
     })
 
