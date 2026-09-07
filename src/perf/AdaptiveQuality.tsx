@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
 import { PerformanceMonitor } from '@react-three/drei'
-import { introActive, onIntroChange } from './introState'
+import { onRevealDone } from './introState'
 
 import { QUALITY } from './quality'
 
@@ -25,7 +25,15 @@ import { QUALITY } from './quality'
  * value holds.
  */
 
-const MIN_DPR = 0.6
+/**
+ * The floor.
+ *
+ * Not just a performance number: the wall's lattice is a mipmapped emitter
+ * spaced in metres, so below roughly 1.0 the GPU picks a mip where the dots
+ * average into flat colour and the wall stops being an LED wall. 0.6 bought
+ * frames by deleting the design.
+ */
+const MIN_DPR = 1
 const DPR_STEP = 0.25
 const TRANS_STEP = 0.15
 
@@ -53,12 +61,19 @@ export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => numbe
      the hero, where a screen of new geometry becomes visible at once. Reacting
      to that was spending a reallocation to fix a spike that had already passed —
      which is the stall on the first scroll. */
-  const armed = useRef(!introActive())
+  /* Armed from the END of the reveal, not the start of the hand-off.
+     It used to arm 3500ms after hand-off -- which is 250ms after the reveal
+     raises resolution and reallocates the drawing buffer. It was sampling the
+     single worst moment on the site and concluding the machine could not cope,
+     flip-flopping into onFallback, which is permanent: drei stops sampling for
+     good once it fires. One bad handful of frames at load pinned the site to
+     the floor for the whole session. */
+  const armed = useRef(false)
   useEffect(() => {
     let t = 0
-    const arm = () => { t = window.setTimeout(() => { armed.current = true }, SETTLE_MS) }
-    if (!introActive()) { arm(); return () => window.clearTimeout(t) }
-    const off = onIntroChange((stillUp) => { if (!stillUp) arm() })
+    const off = onRevealDone(() => {
+      t = window.setTimeout(() => { armed.current = true }, SETTLE_MS)
+    })
     return () => { off(); window.clearTimeout(t) }
   }, [])
 
@@ -88,11 +103,15 @@ export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => numbe
         setDpr((d) => Math.round(clamp(d + DPR_STEP, MIN_DPR, QUALITY.dprMax) * 100) / 100)
         applyTrans(clamp(trans.current + TRANS_STEP, 0.25, QUALITY.transmissionScale))
       }}
-      // Persistent low → drop straight to the floor.
+      /* Persistent low. drei fires this ONCE and then stops sampling for the
+         rest of the session, so whatever it sets is permanent -- which makes
+         slamming to the floor the wrong move. Step down instead, and leave the
+         floor to the repeated onDecline that would follow a genuinely slow
+         machine. */
       onFallback={() => {
         if (!armed.current) return
-        setDpr(() => MIN_DPR)
-        applyTrans(0.25)
+        setDpr((d) => Math.round(clamp(d - DPR_STEP, MIN_DPR, QUALITY.dprMax) * 100) / 100)
+        applyTrans(clamp(trans.current - TRANS_STEP, 0.25, QUALITY.transmissionScale))
       }}
     />
   )
