@@ -1,22 +1,90 @@
 import { Suspense, useEffect, useMemo } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
-import { Box3, Group, Mesh, Vector3 } from 'three'
+import {
+  Box3,
+  FramebufferTexture,
+  Group,
+  LinearFilter,
+  Mesh,
+  MeshBasicMaterial,
+  PlaneGeometry,
+  Vector3,
+} from 'three'
+import type { MeshPhysicalMaterial } from 'three'
 
 import { createGlassMaterial } from './GlassMaterial'
+import { ScreenGlassMaterial } from './ScreenGlassMaterial'
 import { HeroController } from './HeroController'
 import { HERO } from './heroConfig'
 import { QUALITY } from '../perf/quality'
 
+/**
+ * `?glass=screen` swaps the mark's transmission for screen-space refraction.
+ *
+ * Not a quality tier and not adaptive — a straight A/B, so the two can be
+ * compared on the same machine in the same minute. Default is unchanged.
+ */
+const SCREEN_GLASS =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('glass') === 'screen'
+
 function CrystalLogo() {
   const { scene } = useGLTF(HERO.url)
   const gl = useThree((state) => state.gl)
+  const size = useThree((state) => state.size)
+  const viewportDpr = useThree((state) => state.viewport.dpr)
 
   /**
    * One material instance for the whole logo, built once and then only ever
    * mutated. Nothing allocates per frame.
    */
-  const material = useMemo(() => createGlassMaterial(), [])
+  const material = useMemo(
+    () => (SCREEN_GLASS ? new ScreenGlassMaterial() : createGlassMaterial()),
+    [],
+  )
+
+  /* The capture.
+   *
+   * A zero-size mesh drawn just before the mark, whose only job is to copy the
+   * frame so far into a texture the mark can sample. This is Alche's sentinel:
+   * one blit, where transmission would have re-rendered the entire scene.
+   *
+   * It has to be in the transparent queue with a renderOrder below the mark's,
+   * so the opaque room, wall and panels are already on the buffer when it runs
+   * and the mark itself is not. */
+  const capture = useMemo(() => {
+    if (!SCREEN_GLASS) return null
+    const texture = new FramebufferTexture(2, 2)
+    texture.minFilter = LinearFilter
+    texture.magFilter = LinearFilter
+    const sentinel = new Mesh(
+      new PlaneGeometry(0, 0),
+      new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    )
+    sentinel.frustumCulled = false
+    sentinel.renderOrder = 100
+    sentinel.onBeforeRender = (renderer) => {
+      renderer.copyFramebufferToTexture(texture)
+    }
+    return { texture, sentinel }
+  }, [])
+
+  useEffect(() => {
+    if (!capture) return
+    const w = Math.max(2, Math.round(size.width * viewportDpr))
+    const h = Math.max(2, Math.round(size.height * viewportDpr))
+    // FramebufferTexture copies 1:1, so it has to match the drawing buffer
+    capture.texture.image = { width: w, height: h } as unknown as HTMLImageElement
+    capture.texture.needsUpdate = true
+    ;(material as ScreenGlassMaterial).setSceneTexture(capture.texture, w, h)
+  }, [capture, material, size, viewportDpr])
+
+  useEffect(() => () => {
+    capture?.texture.dispose()
+    capture?.sentinel.geometry.dispose()
+    ;(capture?.sentinel.material as MeshBasicMaterial | undefined)?.dispose()
+  }, [capture])
 
   /**
    * The GLB, stood upright, recentred on its own bounds and scaled to the
@@ -50,6 +118,8 @@ function CrystalLogo() {
     instance.traverse((child) => {
       if ((child as Mesh).isMesh) {
         ;(child as Mesh).material = material
+        // after the sentinel, so the capture holds the scene without the mark
+        if (SCREEN_GLASS) (child as Mesh).renderOrder = 101
       }
     })
 
@@ -57,6 +127,8 @@ function CrystalLogo() {
   }, [scene, material])
 
   useEffect(() => {
+    // Nothing to configure when the transmission pass is not running at all.
+    if (SCREEN_GLASS) return
     // Render the transmission pass at full resolution rather than the half-size
     // default, so the room stays sharp when seen through the block. This is the
     // first knob to turn back down if the frame budget gets tight — which is
@@ -73,7 +145,8 @@ function CrystalLogo() {
   }, [material])
 
   return (
-    <HeroController material={material}>
+    <HeroController material={material as unknown as MeshPhysicalMaterial}>
+      {capture ? <primitive object={capture.sentinel} /> : null}
       <primitive object={model} />
     </HeroController>
   )

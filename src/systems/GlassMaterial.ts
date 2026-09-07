@@ -24,7 +24,7 @@ import { WALL_TINT } from './wallTint'
  *
  * Frequencies are whole numbers so the field tiles seamlessly.
  */
-function createWavinessMap(size = 256): DataTexture {
+export function createWavinessMap(size = 256): DataTexture {
   const data = new Uint8Array(size * size * 4)
 
   // Amplitude, frequency in u, frequency in v, phase.

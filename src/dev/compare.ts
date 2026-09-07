@@ -17,6 +17,8 @@ import {
   AmbientLight,
   Box3,
   CanvasTexture,
+  FramebufferTexture,
+  LinearFilter,
   Color,
   DirectionalLight,
   Group,
@@ -32,6 +34,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 
 import { createGlassMaterial } from '../systems/GlassMaterial'
+import { ScreenGlassMaterial } from '../systems/ScreenGlassMaterial'
 import { HERO } from '../systems/heroConfig'
 import { VIEWER } from '../scene/roomConfig'
 import { LIVE } from './live'
@@ -49,7 +52,14 @@ const BUILDS: Build[] = [
 
 const BUST = Date.now()
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
-const material = createGlassMaterial()
+
+/* ?mat=screen renders the mark with the screen-space refraction prototype
+   instead of MeshPhysicalMaterial's transmission, through the same sentinel
+   mechanism the app uses — so what this page shows is what the app will show. */
+const SCREEN = new URLSearchParams(location.search).get('mat') === 'screen'
+const material = SCREEN
+  ? (new ScreenGlassMaterial() as unknown as ReturnType<typeof createGlassMaterial>)
+  : createGlassMaterial()
 
 /** HeroSystem's fit, reproduced exactly, so framing is identical everywhere. */
 function fit(source: Group): { group: Group; tris: number; verts: number; draws: number } {
@@ -73,6 +83,7 @@ function fit(source: Group): { group: Group; tris: number; verts: number; draws:
     const mesh = child as Mesh
     if (!mesh.isMesh) return
     mesh.material = material
+    if (SCREEN) mesh.renderOrder = 101
     draws += 1
     const g = mesh.geometry
     tris += (g.index ? g.index.count : g.attributes.position.count) / 3
@@ -137,6 +148,14 @@ async function main() {
     renderer.setSize(w, h, false)
     camera.aspect = w / h
     camera.updateProjectionMatrix()
+    if (frameTex) {
+      const pr = renderer.getPixelRatio()
+      const bw = Math.max(2, Math.round(w * pr))
+      const bh = Math.max(2, Math.round(h * pr))
+      frameTex.image = { width: bw, height: bh } as unknown as HTMLImageElement
+      frameTex.needsUpdate = true
+      ;(material as unknown as ScreenGlassMaterial).setSceneTexture(frameTex, bw, bh)
+    }
   }
 
   const scene = new Scene()
@@ -146,6 +165,23 @@ async function main() {
   key.position.set(4, 8, 10)
   scene.add(key)
   scene.add(backdrop())
+
+  /* The same sentinel as HeroSystem: a zero-size mesh drawn before the mark,
+     copying the frame so far into a texture the mark refracts. */
+  let frameTex: FramebufferTexture | null = null
+  if (SCREEN) {
+    frameTex = new FramebufferTexture(2, 2)
+    frameTex.minFilter = LinearFilter
+    frameTex.magFilter = LinearFilter
+    const sentinel = new Mesh(
+      new PlaneGeometry(0, 0),
+      new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    )
+    sentinel.frustumCulled = false
+    sentinel.renderOrder = 100
+    sentinel.onBeforeRender = (r) => { r.copyFramebufferToTexture(frameTex!) }
+    scene.add(sentinel)
+  }
 
   const camera = new PerspectiveCamera(VIEWER.fov, 1, VIEWER.near, VIEWER.far)
   camera.position.set(...VIEWER.position)
