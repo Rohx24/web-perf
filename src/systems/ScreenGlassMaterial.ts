@@ -30,7 +30,11 @@ export class ScreenGlassMaterial extends ShaderMaterial {
   attenuationDistance = 4.4
   sheen = 1
   sheenRoughness = 0.5
-  transmission = 1
+  /* MUST stay 0. three decides whether to run its transmission pass by reading
+     this property alone, on any material class -- so a non-zero value here puts
+     the mark back in the transmissive list and re-renders the entire scene, the
+     exact cost this material exists to avoid. */
+  transmission = 0
   normalMap: DataTexture | null = null
 
   constructor() {

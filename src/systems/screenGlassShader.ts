@@ -104,10 +104,13 @@ export const screenGlassFrag = /* glsl */ `
     for (int i = 0; i < SAMPLES; i++) {
       float fi = float(i);
       float slide = (0.005 + random(sUv + fi * 0.2) * 0.007) * uDispersion;
+      /* Alche jitter by rough*0.3, but they refract a smooth scene. Ours is a
+         lattice of hard dots, and a per-pixel random offset across it is
+         salt-and-pepper rather than roughness -- so this stays small. */
       vec2 jitter = vec2(
         random(sUv + fi * 0.1) - 0.5,
         random(sUv + fi * 0.2) - 0.5
-      ) * rough * 0.3;
+      ) * rough * 0.06;
       vec2 base = jitter + sUv;
       // 1x / 2x / 4x is what splits the channels — this is the dispersion
       vec2 uvR = base - refractNormal * (uRefractPower + slide * 1.0);
@@ -125,7 +128,7 @@ export const screenGlassFrag = /* glsl */ `
        complement is absorbed, and deeper through the body means more of both. */
     float depth = 1.0 - abs(normal.z);
     vec3 absorb = mix(vec3(1.0), uBodyColor, 0.55 + depth * 0.25);
-    vec3 c = refracted * absorb * 1.9;
+    vec3 c = refracted * absorb * 2.6;
 
     /* The block is LIT by the room, not merely a window onto it. The physical
        material got this from scatter across a rough interior plus sheen; both
@@ -133,10 +136,16 @@ export const screenGlassFrag = /* glsl */ `
        because the wall it refracts is mostly unlit gaps between dots. */
     c += uBodyColor * 0.17 * (0.6 + depth);
 
-    // one key light, view space, matching the scene's directional
+    /* One key light, view space, matching the scene's directional.
+
+       GGX is a distribution, not a colour: at roughness 0.1 its peak is around
+       93,000, and adding that raw is what turned the whole mark white. It needs
+       an intensity and a ceiling -- the ceiling is what keeps a near-mirror
+       highlight from swallowing the refraction underneath it. */
     vec3 L = normalize(vec3(-1.0, 0.8, -1.0));
     vec3 H = normalize(vViewDir + L);
-    c += vec3(ggx(dot(normal, H), 0.003 + rough * 0.4));
+    float spec = ggx(max(dot(normal, H), 0.0), 0.02 + rough * 0.35);
+    c += vec3(min(spec * 0.012, 0.9));
 
     /* Thin-film: the bands of unrelated colour across the block. A cheap
        angle-driven hue rather than a real interference model — at this size the
@@ -147,7 +156,7 @@ export const screenGlassFrag = /* glsl */ `
 
     // fresnel rim, carrying the sheen colour — this is the clearcoat's edge
     float F = fresnel(ang);
-    c += uSheenColor * F * uEnvIntensity * 0.55;
+    c += uSheenColor * F * uEnvIntensity * 0.28;
 
     gl_FragColor = vec4(c, uOpacity);
   }
