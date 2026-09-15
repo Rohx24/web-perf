@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { scrollProgress } from './scrollProgress'
 import { LIVE } from '../dev/live'
 import { scrambleAll } from './scramble'
+import { countUp } from './countUp'
 import { CrtLedScreen } from './CrtLedScreen'
 import { IS_MOBILE } from '../perf/quality'
 import { drawLedPanel } from '../systems/ledPanel'
@@ -24,11 +25,12 @@ const CELL = 24 // px
 
 // --- Content (Rohit's real data; edit here, not in layout) -----------------
 
-const STATS: [string, string][] = [
-  ['8.06', 'CGPA / 10'],
-  ['Top 8', 'of 15,000+ teams · national hackathon'],
-  ['01', 'Springer-associated research paper'],
-  ['6+', 'AI projects shipped'],
+/** [number, label, the story on the back of the tile] */
+const STATS: [string, string, string][] = [
+  ['8.06', 'CGPA / 10', 'B.Tech (Hons.) CSE, specialising in AI/ML · RV University, Bengaluru'],
+  ['Top 8', 'of 15,000+ teams · national hackathon', 'HCL GUVI AI Impact Summit 2026 · Satark.ai scored 88/100 at Bharat Mandapam'],
+  ['01', 'Springer-associated research paper', 'SWSIoT-2025 with Springer · hybrid AI-powered real-time DDoS detection'],
+  ['6+', 'AI projects shipped', 'Including Satark.ai, BhashaBuddy, AI Boardroom and Parallel Risk-Assessment Agents'],
 ]
 
 const SKILLS: [string, number][] = [
@@ -47,6 +49,19 @@ const SKILL_CHIPS = [
   'Supabase', 'Express', 'Tailwind CSS', 'Streamlit', 'Edge AI · Raspberry Pi',
   'Network Security',
 ]
+
+/** Which stack tools light up when a skill is hovered. A categorisation, not a
+ *  claim about any single project. Names must match SKILLS and SKILL_CHIPS. */
+const SKILL_LINKS: Record<string, string[]> = {
+  'Python': ['Hugging Face', 'Streamlit', 'Whisper'],
+  'Generative AI · LLMs': ['Prompt Engineering', 'Hugging Face', 'Whisper'],
+  'Machine Learning': ['Hugging Face', 'Streamlit', 'Edge AI · Raspberry Pi', 'Network Security'],
+  'RAG Systems': ['ChromaDB', 'LangGraph', 'Prompt Engineering'],
+  'Agentic AI': ['LangGraph', 'Prompt Engineering'],
+  'Full-Stack Development': ['Supabase', 'Express', 'Tailwind CSS'],
+  'React': ['Tailwind CSS', 'Supabase'],
+  'Node.js': ['Express', 'Supabase'],
+}
 
 const ACHIEVEMENTS: [string, string, string][] = [
   [
@@ -73,6 +88,90 @@ const CERTS: [string, string, string][] = [
   ['Open Source Models with Hugging Face', 'Simplilearn SkillUp', 'The HF ecosystem, open-source model selection, and practical NLP usage.'],
   ['Introduction to LangGraph', 'Simplilearn SkillUp', 'Agentic workflow orchestration, stateful multi-step LLM pipelines, graph-based agents.'],
 ]
+
+/**
+ * A stat that counts up as it arrives and turns over to the story behind it.
+ *
+ * The flip is a data attribute, never a class: the reveal observer adds .rd-in
+ * to this element by hand, and a React className update would wipe it and drop
+ * the tile back to opacity 0 the moment it was clicked.
+ */
+function StatTile({ n, label, story }: { n: string; label: string; story: string }) {
+  const [flipped, setFlipped] = useState(false)
+  return (
+    <button
+      type="button"
+      className="rd-tile rd-tile--stat rd-reveal"
+      data-flipped={flipped ? '' : undefined}
+      aria-pressed={flipped}
+      aria-label={`${n} ${label}. ${story}`}
+      onClick={() => setFlipped((f) => !f)}
+    >
+      <span className="rd-stat-inner" aria-hidden="true">
+        <span className="rd-stat-face">
+          <span className="rd-w-stat-n" data-count="">{n}</span>
+          <span className="rd-w-stat-l">{label}</span>
+        </span>
+        <span className="rd-stat-face rd-stat-back">
+          <span className="rd-stat-story">{story}</span>
+        </span>
+      </span>
+    </button>
+  )
+}
+
+/**
+ * Skill bars whose levels count up with their fill, and a stack that lights up
+ * the tools a hovered skill goes with.
+ *
+ * Its own component so a hover re-renders these two tiles, not the whole finale.
+ * Highlight state rides data attributes on inner elements, for the same reason
+ * as StatTile: the .rd-reveal tiles themselves are never re-classed.
+ */
+function SkillsAndStack() {
+  const [active, setActive] = useState<string | null>(null)
+  const lit = active ? (SKILL_LINKS[active] ?? []) : []
+  return (
+    <>
+      <section className="rd-tile rd-tile--skills rd-reveal">
+        <span className="rd-w-label" data-scramble>02 — Skills</span>
+        <div className="rd-w-bars" data-focus={active ? '' : undefined}>
+          {SKILLS.map(([name, lvl]) => (
+            <div
+              key={name}
+              className="rd-w-bar"
+              tabIndex={0}
+              data-active={active === name ? '' : undefined}
+              onMouseEnter={() => setActive(name)}
+              onMouseLeave={() => setActive(null)}
+              onFocus={() => setActive(name)}
+              onBlur={() => setActive(null)}
+            >
+              <div className="rd-w-bar-head">
+                <span>{name}</span>
+                <span className="rd-w-bar-lvl">
+                  LVL <span data-count="" data-count-delay="150" data-count-dur="1200">{lvl}</span>
+                </span>
+              </div>
+              <div className="rd-w-bar-track">
+                <div className="rd-w-bar-fill" style={{ width: `${lvl}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rd-tile rd-tile--chips rd-reveal">
+        <span className="rd-tile-cap" data-scramble>Stack</span>
+        <div className="rd-w-skills" data-focus={active ? '' : undefined}>
+          {SKILL_CHIPS.map((c) => (
+            <span key={c} data-lit={lit.includes(c) ? '' : undefined}>{c}</span>
+          ))}
+        </div>
+      </section>
+    </>
+  )
+}
 
 /**
  * The finale / about-me.
@@ -162,11 +261,16 @@ export function OutroWireframe() {
       ctx.fillStyle = '#f4f5f7'
       const cols = Math.ceil(canvas.width / CELL)
       const rows = Math.ceil(canvas.height / CELL)
+      // Each cell's edge jitters ±0.1 around the front, so a front that stops at 1
+      // leaves the top tenth of the screen ragged and unfilled for good. Stretched
+      // to −0.1..1.1: nothing at 0, every cell by 1, and the front's centre still on
+      // `fill`, so half-filled is half the screen.
+      const front = fill * 1.2 - 0.1
       for (let j = 0; j < rows; j++) {
         const fromBottom = (rows - 1 - j) / rows
         for (let i = 0; i < cols; i++) {
           const edge = (cellHash(i, j) - 0.5) * 0.2
-          if (fromBottom < fill + edge) ctx.fillRect(i * CELL, j * CELL, CELL - 1, CELL - 1)
+          if (fromBottom < front + edge) ctx.fillRect(i * CELL, j * CELL, CELL - 1, CELL - 1)
         }
       }
     }
@@ -266,12 +370,22 @@ export function OutroWireframe() {
         lastFill.current = fill
       }
 
-      // Seamless hand-off: the white panel pulls up once the grid is 45% filled,
-      // over the same quarter of the fill it always took to arrive.
-      const slide = invlerp(0.45, 0.7, fill)
+      // The white panel follows the grid up from halfway and arrives exactly as the
+      // grid completes. Its top sits at 2·fill − 1, never above the fill front, so
+      // there is always grid above it until both reach the top together.
+      const slide = invlerp(0.5, 1.0, fill)
       if (whiteRef.current) {
         whiteRef.current.style.transform = `translateY(${(1 - slide) * 100}%)`
-        whiteRef.current.style.pointerEvents = slide > 0.5 ? 'auto' : 'none'
+        /* The panel only takes the wheel once it has fully arrived. Interactive from
+           halfway, a wheel over the centre scrolled the profile while it was still
+           rising; now the page keeps the wheel, and keeps driving the rise, until it
+           is up. Nothing inside opts back into pointer events, so this gate holds. */
+        const docked = slide >= 1
+        whiteRef.current.style.pointerEvents = docked ? 'auto' : 'none'
+        // ...and it always arrives at its top, however the page was left
+        if (!docked && scrollRef.current && scrollRef.current.scrollTop !== 0) {
+          scrollRef.current.scrollTop = 0
+        }
       }
       /* No crossfade. The panel stacks above this canvas and its base is the same
          #f4f5f7 the cells are painted in, so solid cells above a rising panel read
@@ -316,6 +430,8 @@ export function OutroWireframe() {
         for (const e of entries) {
           if (e.isIntersecting) {
             e.target.classList.add('rd-in')
+            // any numbers in the tile count up as it arrives, once
+            e.target.querySelectorAll<HTMLElement>('[data-count]').forEach(countUp)
             observer.unobserve(e.target)
           }
         }
@@ -387,41 +503,13 @@ export function OutroWireframe() {
                 </dl>
               </aside>
 
-              {/* the numbers, as their own row of small tiles */}
-              {STATS.map(([n, l]) => (
-                <div key={l} className="rd-tile rd-tile--stat rd-reveal">
-                  <span className="rd-w-stat-n">{n}</span>
-                  <span className="rd-w-stat-l">{l}</span>
-                </div>
+              {/* the numbers: they count up as they arrive and turn over to the story */}
+              {STATS.map(([n, l, story]) => (
+                <StatTile key={l} n={n} label={l} story={story} />
               ))}
 
-              {/* skills */}
-              <section className="rd-tile rd-tile--skills rd-reveal">
-                <span className="rd-w-label" data-scramble>02 — Skills</span>
-                <div className="rd-w-bars">
-                  {SKILLS.map(([name, lvl]) => (
-                    <div key={name} className="rd-w-bar">
-                      <div className="rd-w-bar-head">
-                        <span>{name}</span>
-                        <span className="rd-w-bar-lvl">LVL {lvl}</span>
-                      </div>
-                      <div className="rd-w-bar-track">
-                        <div className="rd-w-bar-fill" style={{ width: `${lvl}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* stack */}
-              <section className="rd-tile rd-tile--chips rd-reveal">
-                <span className="rd-tile-cap" data-scramble>Stack</span>
-                <div className="rd-w-skills">
-                  {SKILL_CHIPS.map((c) => (
-                    <span key={c}>{c}</span>
-                  ))}
-                </div>
-              </section>
+              {/* skills + stack: hovering a skill lights up its tools */}
+              <SkillsAndStack />
 
               {/* achievements */}
               <section className="rd-tile rd-tile--rec rd-reveal">
