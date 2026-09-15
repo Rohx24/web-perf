@@ -181,12 +181,21 @@ function Frame({
     const s = scrollProgress()
     const g = SCROLL.gallery
     const w = LIVE.works // live-tunable (control_works panel)
-    const { galleryStart, outroStart } = SCROLL.phase
+    const { galleryStart, galleryEnd, outroStart } = SCROLL.phase
     const outro = smoothstep(outroStart, outroStart + 0.08, s)
 
     const active = galleryActive(s)
     // alche's signed slot offset. xa>0 → entering right/low; xa<0 → exiting left/high.
-    const xa = index - active
+    let xa = index - active
+    /* The first pane has nothing arriving ahead of it: galleryActive starts at
+       -0.5, so it began only half a slot out and seemed to materialise near
+       centre while the rest slide in from the right. Give it a run-up from
+       xa ≈ 1.25 -- where sin() puts a pane furthest right on screen, so it only
+       ever moves inward -- easing away by the moment it parks. */
+    if (index === 0) {
+      const parkS = galleryStart + ((0.5 - w.dwell) / g.count) * (galleryEnd - galleryStart)
+      xa += 0.75 * (1 - smoothstep(galleryStart, parkS, s))
+    }
     const axa = Math.abs(xa)
 
     const galleryFade =
