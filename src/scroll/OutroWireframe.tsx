@@ -273,7 +273,13 @@ export function OutroWireframe() {
         whiteRef.current.style.transform = `translateY(${(1 - slide) * 100}%)`
         whiteRef.current.style.pointerEvents = slide > 0.5 ? 'auto' : 'none'
       }
-      if (canvasRef.current) canvasRef.current.style.opacity = String(1 - slide)
+      /* No crossfade. The panel stacks above this canvas and its base is the same
+         #f4f5f7 the cells are painted in, so solid cells above a rising panel read
+         as the same paper. Fading them with the slide only ever showed a half-built
+         grid as grey blocks with the scene through them -- and with the panel now
+         arriving at 45% fill, that was most of the rise. Hidden only once the panel
+         covers the screen exactly; any earlier and a strip of scene shows above it. */
+      if (canvasRef.current) canvasRef.current.style.opacity = slide >= 1 ? '0' : '1'
 
       // The closing dark dissolve, driven by the profile panel's OWN scroll (not
       // the page scroll — the panel scrolls internally once it has slotted up).
