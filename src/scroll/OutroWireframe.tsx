@@ -266,8 +266,9 @@ export function OutroWireframe() {
         lastFill.current = fill
       }
 
-      // Seamless hand-off: the white panel pulls up once the grid is 75% filled.
-      const slide = invlerp(0.75, 1.0, fill)
+      // Seamless hand-off: the white panel pulls up once the grid is 45% filled,
+      // over the same quarter of the fill it always took to arrive.
+      const slide = invlerp(0.45, 0.7, fill)
       if (whiteRef.current) {
         whiteRef.current.style.transform = `translateY(${(1 - slide) * 100}%)`
         whiteRef.current.style.pointerEvents = slide > 0.5 ? 'auto' : 'none'
