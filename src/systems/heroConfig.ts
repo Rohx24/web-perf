@@ -8,27 +8,28 @@ import { MathUtils } from 'three'
  */
 export const HERO = {
   /**
-   * The mark, decimated to 6% of the source's density.
+   * The mark at 12% of the source's density, with its 12 parts kept separate.
    *
-   * The original is 465,812 triangles across 12 meshes — 99.3% of every
-   * triangle the site draws, against 3,336 for the entire room, wall, panels,
-   * grid, typography, glass and frames combined. Measured, thinning it is the
-   * only change that removes the frame-time tail: lowering transmission
-   * resolution does nothing, and turning transmission off entirely helps less.
+   * The source is 465,812 triangles, 99.3% of every triangle the site draws.
+   * This build is 55,884 in 0.48 MB against 2.49 MB. The source here is the
+   * same file the live site ships: its metal-letter.glb is byte-identical to
+   * metal-letter-opt.glb.
    *
-   * This build is 27,947 triangles in ONE draw call (every imported material is
-   * replaced below by a single shared glass material, so the source's 12 draw
-   * calls and 36 textures were both paying for nothing), and 0.25 MB against
-   * 2.37 MB. Geometric error is 0.06%.
+   * The parts must NOT be merged. three's transmission scales the refraction
+   * ray by each mesh's world scale (`thickness * modelScale` in
+   * transmission_pars_fragment), and the 12 parts sit under node scales that
+   * span 3.5x. A merged build with vertex-identical geometry still rendered ~8%
+   * different in the bowl of the D, because every part refracted at one scale.
+   * Kept separate, the unsimplified build is pixel-identical to the source, and
+   * this one differs by ~2.4% in that same region.
    *
-   * ?hero=/models/metal-letter-opt.glb puts the original back for comparison;
-   * the 50/30/20/12% builds are alongside it, and /compare.html shows the
-   * ladder side by side. scripts/decimate-hero.mjs regenerates them.
+   * ?hero=/models/metal-letter-opt.glb puts the original back.
+   * scripts/decimate-hero-split.mjs regenerates it.
    */
   url:
     (typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).get('hero')) ||
-    '/models/metal-letter-06.glb',
+    '/models/metal-letter-12s.glb',
 
   /**
    * On the camera's view axis, set back into the room so the wall sits close
