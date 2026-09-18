@@ -80,30 +80,60 @@ canvas {
   letter-spacing: 0.26em;
 }
 .rd-nav-links {
+  /* a frosted pill group: the way into Work and the Lab should look like one */
   display: flex;
-  gap: 44px;
-  font-size: 15px;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(10, 12, 20, 0.38);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: 16px;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  pointer-events: auto;
 }
 .rd-nav-links a {
-  color: #dfe4ee;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  color: #eef2fa;
   text-decoration: none;
   pointer-events: auto;
-  opacity: 0.9;
-  transition: opacity 0.2s ease;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 .rd-nav-links a:hover {
-  opacity: 1;
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+.rd-nav-links a:focus-visible {
+  outline: none;
+  background: rgba(255, 255, 255, 0.13);
+}
+.rd-nav-count {
+  font: 600 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+  color: #b3a0ff;
+  transform: translateY(-5px);
+}
+.rd-nav-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d4ff3f;
+  box-shadow: 0 0 10px rgba(212, 255, 63, 0.8);
 }
 .rd-nav-cta {
   pointer-events: auto;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.1em;
   color: #f4f7ff;
   text-decoration: none;
-  padding: 11px 22px;
+  padding: 13px 24px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 999px;
   transition: background 0.2s ease, border-color 0.2s ease;
@@ -127,8 +157,10 @@ canvas {
     letter-spacing: 0.16em;
   }
   .rd-nav-links {
-    gap: 22px;
-    font-size: 13px;
+    font-size: 14px;
+  }
+  .rd-nav-links a {
+    padding: 9px 15px;
   }
   .rd-nav-cta {
     font-size: 12px;
@@ -146,9 +178,17 @@ canvas {
     letter-spacing: 0.06em;
   }
   .rd-nav-links {
-    gap: 14px;
-    font-size: 11px;
-    letter-spacing: 0.04em;
+    gap: 2px;
+    padding: 3px;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+  }
+  .rd-nav-links a {
+    gap: 5px;
+    padding: 7px 10px;
+  }
+  .rd-nav-count {
+    display: none;
   }
   .rd-nav-cta {
     font-size: 10px;
@@ -156,11 +196,10 @@ canvas {
     padding: 7px 11px;
   }
 }
-/* Very small phones (≈360px and under): drop the middle links, keep brand +
-   Contact so nothing collides; Work/About/Lab remain reachable in the About
-   panel and works page. */
+/* Very small phones (≈360px and under): About goes (it is a scroll away);
+   Work and the Lab stay, they are the point of the bar. */
 @media (max-width: 380px) {
-  .rd-nav-links {
+  .rd-nav-links a[href='#about'] {
     display: none;
   }
 }
@@ -945,8 +984,9 @@ canvas {
      viewport, so on short/wide windows it can't overflow the abyss (which is
      parked one screen-height down at rest) and poke up into the hero. */
   /* The height cap keeps the set + knob strip + ticker inside the viewport once
-     the header and footer take their share: total ≈ 0.75·width + 250px. */
-  width: min(820px, 92vw, calc((100vh - 252px) * 1.33));
+     the header and footer take their share: total ≈ 0.75·width + 290px. */
+  box-sizing: border-box; /* the width below is the whole set, bezel included */
+  width: min(860px, calc(100vw - 32px), calc((100vh - 290px) * 1.33));
   padding: 30px 30px 18px;
   border-radius: 26px;
   background: linear-gradient(160deg, #2a2c31, #141518 55%, #0c0d10);
@@ -960,6 +1000,7 @@ canvas {
   aspect-ratio: 4 / 3;
   border-radius: 24px;
   overflow: hidden;
+  container-type: inline-size;
   background: radial-gradient(120% 120% at 50% 45%, #0b1418, #04070a 70%, #010203);
   box-shadow:
     inset 0 0 60px rgba(0, 0, 0, 0.9),
@@ -1003,58 +1044,79 @@ canvas {
 .rd-crt-content {
   position: absolute;
   inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: clamp(8px, 2.2cqw, 20px);
   text-align: center;
-  padding: 8% 12%;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #dbeaff;
+  padding: 7% 9%;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  color: #e9f0fa;
+  /* a soft phosphor bloom and a hairline of contrast, and no colour fringing:
+     the red/blue split read as blur, not as a television */
   text-shadow:
-    0 0 8px rgba(120, 180, 255, 0.55),
-    0.6px 0 0 rgba(255, 0, 80, 0.4),
-    -0.6px 0 0 rgba(0, 200, 255, 0.4);
+    0 1px 2px rgba(0, 0, 0, 0.65),
+    0 0 22px rgba(110, 160, 255, 0.2);
 }
 .rd-crt-ch {
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  color: #7fd0ff;
-  opacity: 0.85;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font: 500 clamp(10px, 1.6cqw, 13px) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #8fd6ff;
 }
 .rd-crt-head {
   margin: 0;
-  font: 700 clamp(1.4rem, 4vw, 2.4rem) / 1 'Space Grotesk', sans-serif;
-  letter-spacing: 0.02em;
-  color: #eaf4ff;
+  padding-bottom: 0.06em;
+  font: 700 clamp(2rem, 8.6cqw, 4.6rem) / 0.95 'Space Grotesk', sans-serif;
+  letter-spacing: -0.035em;
+  background: linear-gradient(100deg, #ff6cbb 0%, #8b6dff 55%, #6ba8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 18px rgba(139, 109, 255, 0.35));
 }
 .rd-crt-mail {
-  font-size: clamp(0.7rem, 1.8vw, 0.95rem);
-  letter-spacing: 0.04em;
-  color: #7fe0d0;
+  font: 500 clamp(1rem, 3.1cqw, 1.6rem) / 1.2 'Space Grotesk', sans-serif;
+  letter-spacing: 0.01em;
+  color: #fff;
   text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  padding-bottom: 2px;
   word-break: break-all;
   pointer-events: auto;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 .rd-crt-mail:hover {
-  color: #aef7ea;
+  color: #7dff9a;
+  border-color: #7dff9a;
 }
 .rd-crt-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 18px;
+  gap: 8px 10px;
   justify-content: center;
-  margin-top: 6px;
 }
 .rd-crt-links a {
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: #cfe6ff;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  font: 500 clamp(11px, 1.85cqw, 14px) / 1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.02em;
+  color: #dfe8f5;
   text-decoration: none;
   pointer-events: auto;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
 .rd-crt-links a:hover {
+  border-color: rgba(125, 255, 154, 0.7);
+  background: rgba(125, 255, 154, 0.08);
   color: #fff;
 }
 .rd-crt-badge {
@@ -1065,6 +1127,9 @@ canvas {
 
 /* ---- the contact set as a working television -------------------------------- */
 .rd-crt-stage {
+  /* positioned, so it paints above the lamp canvas (itself positioned) */
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1084,6 +1149,7 @@ canvas {
 /* the set's on-screen display: green, blocky, gone after a beat */
 .rd-crt-osd {
   position: absolute;
+  z-index: 3;
   top: 7%;
   right: 7%;
   font: 700 clamp(14px, 2.2vw, 22px) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -1099,16 +1165,52 @@ canvas {
 }
 .rd-crt-say {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  width: min(100%, 360px);
-  margin-top: 8px;
-  padding: 8px 12px;
-  border: 1px dashed rgba(127, 224, 208, 0.35);
-  border-radius: 8px;
+  width: min(100%, 64cqw);
   pointer-events: auto;
   color: #7fe0d0;
-  font-size: 12px;
+}
+.rd-crt-say label {
+  font-size: clamp(10px, 1.6cqw, 12.5px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9fb7cc;
+}
+.rd-crt-say-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid rgba(127, 224, 208, 0.45);
+  border-radius: 10px;
+  background: rgba(4, 12, 16, 0.55);
+  font-size: clamp(12px, 2cqw, 15px);
+  transition: border-color 0.2s ease;
+}
+.rd-crt-say-row:focus-within {
+  border-color: rgba(125, 255, 154, 0.8);
+}
+.rd-crt-say button {
+  flex: none;
+  padding: 7px 12px;
+  border: 1px solid rgba(125, 255, 154, 0.55);
+  border-radius: 7px;
+  background: rgba(125, 255, 154, 0.12);
+  color: #7dff9a;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+.rd-crt-say button:hover:not(:disabled) {
+  background: rgba(125, 255, 154, 0.24);
+}
+.rd-crt-say button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .rd-crt-say input {
   flex: 1;
@@ -1124,19 +1226,21 @@ canvas {
 .rd-crt-say input::placeholder {
   color: rgba(207, 230, 255, 0.45);
 }
-.rd-crt-say:focus-within {
-  border-color: rgba(125, 255, 154, 0.7);
-}
 .rd-crt-clock {
-  font: 700 clamp(2rem, 7vw, 4.2rem) / 1 'Space Grotesk', sans-serif;
-  letter-spacing: -0.01em;
-  color: #eaf4ff;
+  font: 700 clamp(2.4rem, 13cqw, 6.6rem) / 0.95 'Space Grotesk', sans-serif;
+  letter-spacing: -0.045em;
+  background: linear-gradient(100deg, #ff6cbb 0%, #8b6dff 55%, #6ba8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 22px rgba(139, 109, 255, 0.35));
 }
 .rd-crt-sub {
-  font-size: 11px;
-  letter-spacing: 0.16em;
+  font: 500 clamp(10px, 1.6cqw, 13px) / 1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #7fd0ff;
+  color: #8fd6ff;
 }
 .rd-crt-live-link {
   pointer-events: auto;
@@ -1144,54 +1248,6 @@ canvas {
 }
 .rd-crt-live-link:hover {
   color: #fff;
-}
-.rd-crt-list,
-.rd-crt-work {
-  margin: 6px 0;
-  padding: 0;
-  list-style: none;
-  font-size: clamp(10px, 1.4vw, 12.5px);
-  line-height: 1.9;
-  letter-spacing: 0.04em;
-}
-.rd-crt-work li {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-}
-.rd-crt-work li span {
-  color: #7fd0ff;
-}
-.rd-crt-work a {
-  color: #eaf4ff;
-  text-decoration: none;
-  pointer-events: auto;
-}
-.rd-crt-work a:hover {
-  color: #7dff9a;
-}
-.rd-crt-credits {
-  display: grid;
-  gap: 8px;
-  margin: 4px 0 6px;
-  font-size: clamp(10px, 1.4vw, 12.5px);
-}
-.rd-crt-credits div {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-.rd-crt-credits dt {
-  text-align: right;
-  color: #7fd0ff;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 0.85em;
-}
-.rd-crt-credits dd {
-  margin: 0;
-  text-align: left;
-  color: #eaf4ff;
 }
 /* the knob strip on the bezel */
 .rd-crt-bar {
@@ -1246,11 +1302,314 @@ canvas {
   text-transform: uppercase;
   color: #9aa3b2;
 }
-/* the LED crawl under the set */
-.rd-crt-ticker {
+/* the say-hi line reads as text, not as a terminal */
+.rd-crt-say label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.rd-crt-say input {
+  font-family: 'Space Grotesk', sans-serif !important;
+}
+.rd-crt-lede {
+  margin: -2px 0 2px;
+  font: 400 clamp(12px, 1.9cqw, 15px) / 1.4 'Space Grotesk', sans-serif;
+  letter-spacing: 0.02em;
+  color: #a9b8ca;
+}
+/* the channel heading carries a hairline either side */
+.rd-crt-ch::before,
+.rd-crt-ch::after {
+  content: '';
+  width: clamp(14px, 3.4cqw, 30px);
+  height: 1px;
+  background: currentColor;
+  opacity: 0.5;
+}
+/* darkens the middle of the glass, where the type sits, and leaves the edges
+   alive with the picture */
+.rd-crt-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 64% 60% at 50% 50%, rgba(3, 6, 12, 0.8), rgba(3, 6, 12, 0.45) 62%, rgba(3, 6, 12, 0.08));
+}
+
+/* now: a small fact sheet */
+.rd-crt-facts {
+  display: grid;
+  width: min(100%, 72cqw);
+  margin: 4px 0 0;
+  text-align: left;
+}
+.rd-crt-facts div {
+  display: grid;
+  grid-template-columns: 10ch 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: clamp(6px, 1.4cqw, 11px) 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+.rd-crt-facts dt {
+  font: 500 clamp(9.5px, 1.45cqw, 12px) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8fd6ff;
+}
+.rd-crt-facts dd {
+  margin: 0;
+  font: 400 clamp(12px, 2.05cqw, 16px) / 1.35 'Space Grotesk', sans-serif;
+  color: #e9f0fa;
+}
+
+/* work: an index of every project */
+.rd-crt-work {
+  width: min(100%, 76cqw);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+.rd-crt-work a {
+  display: grid;
+  grid-template-columns: 3ch 1fr auto auto;
+  gap: 14px;
+  align-items: baseline;
+  padding: clamp(5px, 1.25cqw, 10px) 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e9f0fa;
+  text-decoration: none;
+  pointer-events: auto;
+  transition: color 0.2s ease, padding 0.25s ease, background 0.25s ease;
+}
+.rd-crt-work a:hover {
+  padding-left: 10px;
+  color: #7dff9a;
+  background: linear-gradient(90deg, rgba(125, 255, 154, 0.08), transparent 70%);
+}
+.rd-crt-work span {
+  font: 500 clamp(10px, 1.5cqw, 12px) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #8fd6ff;
+}
+.rd-crt-work b {
+  font: 600 clamp(13px, 2.45cqw, 19px) / 1.2 'Space Grotesk', sans-serif;
+  letter-spacing: -0.01em;
+}
+.rd-crt-work em {
+  font: 400 clamp(9.5px, 1.4cqw, 11.5px) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-style: normal;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7d8a9c;
+}
+.rd-crt-work i {
+  font-style: normal;
+  color: #7d8a9c;
+}
+
+/* credits: rolling, masked top and bottom */
+.rd-crt-content--roll {
+  padding: 0;
+}
+.rd-crt-roll {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  -webkit-mask-image: linear-gradient(transparent, #000 20%, #000 80%, transparent);
+  mask-image: linear-gradient(transparent, #000 20%, #000 80%, transparent);
+}
+.rd-crt-roll-in {
+  height: 100%;
+  animation: rd-roll-a 34s linear infinite;
+}
+.rd-crt-roll-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(20px, 5cqw, 44px);
+  padding: 0 8%;
+  text-align: center;
+  animation: rd-roll-b 34s linear infinite;
+}
+.rd-crt-roll:hover .rd-crt-roll-in,
+.rd-crt-roll:hover .rd-crt-roll-track {
+  animation-play-state: paused;
+}
+@keyframes rd-roll-a {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes rd-roll-b {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+.rd-roll-kicker {
+  margin: 0;
+  font: 500 clamp(10px, 1.6cqw, 13px) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #8fd6ff;
+}
+.rd-roll-title {
+  margin: -8px 0 0;
+  font: 400 clamp(2rem, 8.6cqw, 4.6rem) / 1 'Russo One', 'Space Grotesk', sans-serif;
+  background: linear-gradient(100deg, #ff6cbb 0%, #8b6dff 55%, #6ba8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+.rd-roll-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.rd-roll-block span {
+  margin-bottom: 4px;
+  font: 500 clamp(9.5px, 1.45cqw, 12px) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #8fd6ff;
+}
+.rd-roll-block b {
+  font: 600 clamp(15px, 3cqw, 24px) / 1.25 'Space Grotesk', sans-serif;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+.rd-roll-end {
+  margin: 12px 0 0;
+  font: 700 clamp(18px, 4cqw, 32px) / 1.1 'Space Grotesk', sans-serif;
+  letter-spacing: -0.02em;
+  background: linear-gradient(100deg, #ff6cbb 0%, #8b6dff 55%, #6ba8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+/* each line rises in and comes into focus as its channel is tuned */
+.rd-crt-content[data-on] > *,
+.rd-crt-content[data-on] .rd-crt-work li {
+  animation: rd-crt-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: 0.12s;
+}
+.rd-crt-content[data-on] > :nth-child(2) { animation-delay: 0.19s; }
+.rd-crt-content[data-on] > :nth-child(3) { animation-delay: 0.26s; }
+.rd-crt-content[data-on] > :nth-child(4) { animation-delay: 0.33s; }
+.rd-crt-content[data-on] > :nth-child(5) { animation-delay: 0.4s; }
+.rd-crt-content[data-on] > :nth-child(6) { animation-delay: 0.47s; }
+.rd-crt-content[data-on] > :nth-child(7) { animation-delay: 0.54s; }
+.rd-crt-content[data-on] .rd-crt-work li:nth-child(2) { animation-delay: 0.3s; }
+.rd-crt-content[data-on] .rd-crt-work li:nth-child(3) { animation-delay: 0.36s; }
+.rd-crt-content[data-on] .rd-crt-work li:nth-child(4) { animation-delay: 0.42s; }
+.rd-crt-content[data-on] .rd-crt-work li:nth-child(5) { animation-delay: 0.48s; }
+.rd-crt-content[data-on] .rd-crt-work li:nth-child(6) { animation-delay: 0.54s; }
+/* the roll animates itself */
+.rd-crt-content--roll[data-on] > * {
+  animation: none;
+}
+@keyframes rd-crt-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@media (max-width: 640px) {
+  .rd-crt-lede,
+  .rd-crt-work em,
+  .rd-crt-facts dt {
+    display: none;
+  }
+  .rd-crt-facts div {
+    grid-template-columns: 1fr;
+  }
+  .rd-crt-work a {
+    grid-template-columns: 3ch 1fr auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-crt-content[data-on] > *,
+  .rd-crt-content[data-on] .rd-crt-work li {
+    animation: none;
+  }
+  .rd-crt-roll-in,
+  .rd-crt-roll-track {
+    animation: none;
+  }
+  .rd-crt-roll {
+    overflow-y: auto;
+  }
+}
+
+/* the channel guide under the set */
+.rd-crt-guide {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
   width: 100%;
-  height: clamp(28px, 4.6vw, 42px);
-  display: block;
+  pointer-events: auto;
+}
+.rd-crt-guide button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 13px 14px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  /* solid, so the lamps behind don't run through the type */
+  background: linear-gradient(160deg, #16181c, #0b0c0f);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+  color: #8a93a3;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+}
+.rd-crt-guide button:hover {
+  border-color: rgba(125, 255, 154, 0.35);
+  transform: translateY(-2px);
+}
+.rd-crt-guide button:focus-visible {
+  outline: none;
+  border-color: rgba(125, 255, 154, 0.7);
+}
+.rd-crt-guide button[data-on] {
+  border-color: rgba(125, 255, 154, 0.55);
+  background: linear-gradient(160deg, #15241b, #0b100d);
+  color: #cfe9d6;
+}
+.rd-crt-guide-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+}
+.rd-crt-guide i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3a3f47;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+.rd-crt-guide button[data-on] i {
+  background: #7dff9a;
+  box-shadow: 0 0 8px #7dff9a;
+}
+.rd-crt-guide b {
+  font: 600 15px/1.1 'Space Grotesk', sans-serif;
+  color: #eaf4ff;
+}
+.rd-crt-guide small {
+  font: 400 12px/1.35 'Space Grotesk', sans-serif;
+  color: #7d8594;
 }
 
 /* the header and footer of the last page */
@@ -1334,6 +1693,27 @@ canvas {
     padding: 16px 16px 12px;
   }
   .rd-crt-say {
+    display: none;
+  }
+  /* a phone-width 4:3 tube is too short for the channels: go square */
+  .rd-crt-screen {
+    aspect-ratio: 1;
+  }
+  .rd-crt-guide {
+    gap: 6px;
+  }
+  .rd-crt-guide button {
+    gap: 5px;
+    padding: 9px 8px 10px;
+  }
+  .rd-crt-guide-top {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+  .rd-crt-guide b {
+    font-size: 13px;
+  }
+  .rd-crt-guide small {
     display: none;
   }
 }
@@ -1644,14 +2024,14 @@ canvas {
   /* The CRT container is pointer-transparent so the wheel scrolls the panel
      behind it; every control inside has to opt back in, as the links do. */
   pointer-events: auto;
-  margin-top: clamp(16px, 2.4vw, 26px);
-  padding: 10px 20px;
+  margin-top: clamp(4px, 1.2cqw, 10px);
+  padding: clamp(9px, 1.6cqw, 13px) clamp(18px, 3.4cqw, 28px);
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.28);
   background: rgba(255, 255, 255, 0.06);
   color: #eef2f8;
   text-decoration: none;
-  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 600 clamp(10px, 1.7cqw, 13px)/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;

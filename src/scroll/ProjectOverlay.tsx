@@ -127,11 +127,16 @@ export function ProjectOverlay() {
         <div className="rd-nav-brand">ROHIT DIGGI</div>
         <div className="rd-nav-links">
           {/* Work → the separate works archive page (Alche-style, its own HTML). */}
-          <a href="/works.html" data-scramble>Work</a>
+          {/* The scramble rewrites textContent, so it sits on the word alone and the
+              count / dot beside it survive. */}
+          <a href="/works.html">
+            <span data-scramble>Work</span>
+            {/* the gallery's projects, plus DriveDash on the works page */}
+            <span className="rd-nav-count">{String(PROJECTS.length + 1).padStart(2, '0')}</span>
+          </a>
           {/* About → smooth-scroll straight down to the Rohit Diggi about panel. */}
           <a
             href="#about"
-            data-scramble
             onClick={(e) => {
               e.preventDefault()
               window.scrollTo({
@@ -140,9 +145,12 @@ export function ProjectOverlay() {
               })
             }}
           >
-            About
+            <span data-scramble>About</span>
           </a>
-          <a href="/lab.html" data-scramble>Lab</a>
+          <a href="/lab.html">
+            <span data-scramble>Lab</span>
+            <i className="rd-nav-dot" aria-hidden="true" />
+          </a>
         </div>
         <a className="rd-nav-cta" href="mailto:rohitjd.btech23@rvu.edu.in" data-scramble>
           Contact ↗

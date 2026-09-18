@@ -11,7 +11,10 @@
       rel="stylesheet"
     />
     <style>
+      /* the page's ambient light takes the colour of the project in view */
+      @property --amb { syntax: '<color>'; inherits: true; initial-value: #6a4bff; }
       :root {
+        --amb: #6a4bff;
         --bg: #06070a;
         --ink: #eef2f8;
         --muted: #838b9b;
@@ -30,6 +33,13 @@
         -webkit-font-smoothing: antialiased;
         min-height: 100vh;
         overflow-x: hidden;
+        transition: --amb 1.2s ease;
+      }
+      body::before {
+        content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+        background:
+          radial-gradient(60% 50% at 85% 20%, color-mix(in srgb, var(--amb) 16%, transparent), transparent 70%),
+          radial-gradient(50% 45% at 10% 90%, color-mix(in srgb, var(--amb) 10%, transparent), transparent 70%);
       }
       a { color: inherit; }
       .mono {
@@ -74,15 +84,69 @@
         -webkit-background-clip: text; background-clip: text; color: transparent;
       }
       .lede { color: var(--muted); font-size: clamp(0.95rem, 1.5vw, 1.2rem); max-width: 40rem; line-height: 1.6; }
-      .count { position: absolute; right: clamp(20px, 5vw, 72px); bottom: clamp(40px, 7vw, 90px); text-align: right; color: var(--muted); font-size: 12px; }
-      .count b { display: block; color: var(--ink); font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 700; letter-spacing: -0.02em; }
-
-      /* --- Rotated edge label ------------------------------------------------ */
-      .edge {
-        position: fixed; left: 10px; top: 50%; z-index: 5;
-        transform: translateY(-50%) rotate(180deg); writing-mode: vertical-rl;
-        color: #ffffff40; font-size: 11px; letter-spacing: 0.5em; pointer-events: none;
+      .hero-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: clamp(30px, 5vw, 80px); align-items: end; }
+      .index { list-style: none; border-top: 1px solid var(--line); }
+      .index a {
+        display: grid; grid-template-columns: 2.4rem 1fr auto; align-items: baseline; gap: 14px;
+        padding: 15px 4px; border-bottom: 1px solid var(--line); text-decoration: none;
+        transition: padding 0.3s cubic-bezier(0.22,1,0.36,1), color 0.3s;
       }
+      .index a:hover { padding-left: 16px; color: var(--c); }
+      .index .i { color: var(--muted); font-size: 11px; }
+      .index .t { font-size: clamp(1.1rem, 1.8vw, 1.5rem); font-weight: 600; letter-spacing: -0.01em; }
+      .index .g { color: var(--muted); font-size: 10.5px; }
+      /* when each thing was built: one lane per overlap, one column per month */
+      .timeline { margin-top: clamp(44px, 6vw, 76px); }
+      .timeline .cap { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-bottom: 16px; }
+      .tl-scroll { overflow-x: auto; scrollbar-width: none; }
+      .tl-scroll::-webkit-scrollbar { display: none; }
+      .tl {
+        position: relative; display: grid; grid-template-columns: repeat(13, minmax(56px, 1fr));
+        grid-template-rows: repeat(3, 46px) 26px; min-width: 760px;
+        padding-top: 10px; border-top: 1px solid var(--line);
+      }
+      /* month gridlines */
+      .tl::before {
+        content: ''; position: absolute; inset: 0 0 26px; pointer-events: none;
+        background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px calc(100% / 13));
+      }
+      /* the line is exact; the name may run on into the empty months beside it */
+      .tl a {
+        position: relative; z-index: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;
+        gap: 7px; padding: 0 4px; text-decoration: none;
+      }
+      .tl a.end { align-items: flex-end; }
+      .tl .n { white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--ink); transition: color 0.25s; }
+      .tl .n small { margin-left: 6px; color: var(--muted); font: 500 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.12em; }
+      .tl .bar {
+        align-self: stretch; height: 6px; border-radius: 999px;
+        background: color-mix(in srgb, var(--c) 55%, transparent);
+        transition: background 0.25s, box-shadow 0.25s;
+      }
+      .tl a:hover .n { color: var(--c); }
+      .tl a:hover .bar { background: var(--c); box-shadow: 0 0 16px var(--c); }
+      .tl .m { grid-row: 4; align-self: end; color: var(--muted); font-size: 10.5px; padding-left: 8px; }
+      .tl .m b { color: var(--ink); font-weight: 500; }
+      /* the preview that follows the pointer over the index */
+      .peek {
+        position: fixed; top: 0; left: 0; z-index: 30; width: 340px; aspect-ratio: 16 / 9; pointer-events: none;
+        border-radius: 12px; overflow: hidden; opacity: 0; scale: 0.9; rotate: -3deg;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px #ffffff26;
+        transition: opacity 0.25s, scale 0.35s cubic-bezier(0.22,1,0.36,1);
+      }
+      .peek.on { opacity: 1; scale: 1; }
+      .peek img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+      /* --- Index rail: where you are, and a way to jump ------------------- */
+      /* slim enough to live in the page margin without touching the content */
+      .rail {
+        position: fixed; left: 18px; top: 50%; z-index: 15; transform: translateY(-50%);
+        display: flex; flex-direction: column; gap: 12px; font-size: 10px; letter-spacing: 0.08em;
+      }
+      .rail a { position: relative; color: #ffffff38; text-decoration: none; transition: color 0.3s; }
+      .rail a:hover { color: #ffffffb0; }
+      .rail a.on { color: var(--amb); font-weight: 700; }
+      .rail a.on::after { content: ''; position: absolute; left: -10px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--amb); }
 
       /* --- Work slabs -------------------------------------------------------- */
       .works { display: flex; flex-direction: column; gap: clamp(90px, 15vw, 220px); padding: clamp(30px, 6vw, 80px) 0 clamp(80px, 12vw, 160px); }
@@ -109,15 +173,33 @@
       /* Media slab: slanted, framed, with a soft accent glow and a chrome edge. */
       .media { position: relative; z-index: 1; }
       .frame {
-        position: relative; border-radius: 16px; overflow: hidden;
+        position: relative; display: block; border-radius: 16px; overflow: hidden; text-decoration: none;
         border: 1px solid #ffffff1f;
         box-shadow: 0 40px 90px rgba(0,0,0,0.6), inset 0 1px 0 #ffffff22;
-        transform: perspective(1600px) rotateY(var(--ry, -6deg)) rotateX(2deg);
+        transform: perspective(1600px) rotateY(var(--ry, -6deg)) rotateX(var(--rx, 2deg));
         transition: transform 0.5s cubic-bezier(0.22,1,0.36,1), box-shadow 0.5s;
         will-change: transform;
       }
       .work.flip .frame { --ry: 6deg; }
-      .work:hover .frame { transform: perspective(1600px) rotateY(0deg) rotateX(0deg) translateY(-4px); box-shadow: 0 50px 120px rgba(0,0,0,0.7), 0 0 0 1px #ffffff40; }
+      .work:hover .frame { box-shadow: 0 50px 120px rgba(0,0,0,0.7), 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
+      .frame.live { transition: transform 0.12s linear, box-shadow 0.5s; }
+      .chrome { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: #13151b; border-bottom: 1px solid #ffffff14; }
+      .chrome i { width: 9px; height: 9px; border-radius: 50%; background: #2c2f38; }
+      .chrome span { margin-left: 10px; padding: 4px 12px; border-radius: 6px; background: #0b0c10; color: var(--muted); font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em; }
+      .facts { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 0; margin: 0 0 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .facts div { padding: 12px 22px 12px 0; }
+      .facts div + div { padding-left: 22px; border-left: 1px solid var(--line); }
+      .facts dt { color: var(--muted); font-size: 10px; margin-bottom: 6px; }
+      .facts dd { font: 600 15px/1.2 'Space Grotesk', sans-serif; letter-spacing: -0.005em; text-transform: none; }
+      .facts dd.hi { color: var(--accent); }
+      /* a label that rides the pointer over a screenshot */
+      .badge {
+        position: fixed; top: 0; left: 0; z-index: 30; pointer-events: none;
+        padding: 12px 18px; border-radius: 999px; background: var(--bc, #fff); color: #06070a;
+        font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.14em; text-transform: uppercase;
+        opacity: 0; scale: 0.6; transition: opacity 0.2s, scale 0.3s cubic-bezier(0.22,1,0.36,1);
+      }
+      .badge.on { opacity: 1; scale: 1; }
       .frame::after {
         content: ''; position: absolute; inset: 0; pointer-events: none;
         background: radial-gradient(120% 90% at 30% 0%, #ffffff14, transparent 55%);
@@ -164,12 +246,39 @@
       .arow .alink { color: var(--muted); font-size: 11px; letter-spacing: 0.14em; }
       .arow[href] .alink { color: var(--ink); }
 
+      /* --- Next: the Lab ------------------------------------------------------ */
+      .next {
+        display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px;
+        margin-top: clamp(70px, 10vw, 130px); padding: clamp(28px, 4vw, 48px);
+        border: 1px solid var(--line); border-radius: 22px; text-decoration: none;
+        background: linear-gradient(135deg, #d4ff3f10, transparent 55%), #0b0c10;
+        transition: border-color 0.3s, transform 0.4s cubic-bezier(0.22,1,0.36,1);
+      }
+      .next:hover { border-color: #d4ff3f66; transform: translateY(-4px); }
+      .next .k { color: #d4ff3f; font-size: 11px; }
+      .next h3 { margin-top: 12px; font-size: clamp(2rem, 5vw, 4rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+      .next p { margin-top: 12px; color: var(--muted); max-width: 38rem; line-height: 1.6; }
+      .next .arrow { font-size: clamp(2rem, 5vw, 4rem); color: #d4ff3f; transition: transform 0.4s cubic-bezier(0.22,1,0.36,1); }
+      .next:hover .arrow { transform: translateX(10px); }
+
       /* --- Footer ------------------------------------------------------------ */
       footer { padding: clamp(60px, 10vw, 130px) 0 60px; text-align: center; }
+      /* outlined letters that light up under the pointer, as on the Lab, in the
+         site's violet */
       .foot-word {
+        --c: #8b6dff;
+        display: flex; justify-content: center; flex-wrap: wrap;
         font-size: clamp(3rem, 15vw, 13rem); font-weight: 700; letter-spacing: -0.02em; line-height: 0.9;
-        background: linear-gradient(180deg, #ffffff 0%, #99a2b4 100%);
-        -webkit-background-clip: text; background-clip: text; color: transparent; opacity: 0.9;
+        user-select: none;
+      }
+      .foot-word span {
+        color: transparent; -webkit-text-stroke: 1px #ffffff38;
+        transition: color 0.5s ease, -webkit-text-stroke-color 0.5s ease, text-shadow 0.5s ease;
+      }
+      .foot-word span:hover {
+        color: var(--c); -webkit-text-stroke-color: var(--c);
+        text-shadow: 0 0 40px color-mix(in srgb, var(--c) 45%, transparent);
+        transition-duration: 0.06s;
       }
       .foot-meta { margin-top: 26px; color: var(--muted); font-size: 12px; display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; }
       .foot-meta a { color: var(--muted); text-decoration: none; }
@@ -184,23 +293,38 @@
         .work.flip .media, .work.flip .copy { order: initial; }
         .frame, .work.flip .frame { --ry: 0deg; transform: none; }
         .ghost-num { display: none; }
-        .edge { display: none; }
+        .hero-grid { grid-template-columns: 1fr; }
+        .facts { grid-template-columns: 1fr 1fr 1fr; }
+        .facts div { padding-right: 10px; }
+        .facts div + div { padding-left: 10px; }
+        .next { grid-template-columns: 1fr; }
+        .nav-right a[href="#archive"],
+        .nav-right a[href="/"] { display: none; } /* the name already links home */
+        nav { gap: 16px; }
+        .brand { font-size: 13px; letter-spacing: 0.2em; }
         .arow { grid-template-columns: 2.2rem 1fr; }
         .arow .atag, .arow .alink { display: none; }
       }
+      @media (max-width: 1100px) { .rail { display: none; } }
       @media (prefers-reduced-motion: reduce) {
+        body { transition: none; }
         .reveal { opacity: 1; transform: none; transition: none; }
         html { scroll-behavior: auto; }
       }
     </style>
   </head>
   <body>
-    <div class="edge">ROHIT DIGGI · WORKS</div>
+    <aside class="rail mono" aria-label="Projects">
+      <a href="#satark">01</a><a href="#bhashabuddy">02</a><a href="#prism">03</a><a href="#boardroom">04</a><a href="#claude-counter">05</a><a href="#drivedash">06</a>
+    </aside>
+    <div class="peek" id="peek" aria-hidden="true"><img alt="" /></div>
+    <div class="badge" id="badge" aria-hidden="true"></div>
 
     <nav>
       <a class="brand" href="/">ROHIT&nbsp;DIGGI</a>
       <div class="nav-right mono">
         <a href="/">Home ↩</a>
+        <a href="/lab.html">Lab</a>
         <a href="#archive">Archive</a>
         <a class="nav-cta" href="mailto:rohitjd.btech23@rvu.edu.in">Contact ↗</a>
       </div>
@@ -208,19 +332,57 @@
 
     <div class="wrap">
       <header class="reveal">
-        <span class="eyebrow mono">Works · Selected</span>
-        <h1>Works</h1>
-        <p class="lede">Everything I've built: AI agents, safety tooling and language systems, shipped and live. Click through to the real thing.</p>
-        <div class="count mono"><b>07</b>projects</div>
+        <span class="eyebrow mono">Works · Selected · 2025 to 2026</span>
+        <div class="hero-grid">
+          <div>
+            <h1>Works</h1>
+            <p class="lede">Everything I've built: AI agents, safety tooling, language systems, an open-source extension and an Android car app. Shipped, and most of it live. Hover the index for a preview.</p>
+          </div>
+          <ol class="index">
+            <li><a href="#satark" data-peek="/previews/satark.webp" style="--c:#10b981"><span class="i mono">01</span><span class="t">Satark.ai</span><span class="g mono">AI · Safety</span></a></li>
+            <li><a href="#bhashabuddy" data-peek="/previews/bhashabuddy.webp" style="--c:#FB8C6B"><span class="i mono">02</span><span class="t">BhashaBuddy</span><span class="g mono">AI · Language</span></a></li>
+            <li><a href="#prism" data-peek="/previews/parallel-risk.webp" style="--c:#8b5cf6"><span class="i mono">03</span><span class="t">PRISM</span><span class="g mono">AI · Agents</span></a></li>
+            <li><a href="#boardroom" data-peek="/previews/ai-boardroom.webp" style="--c:#D6A34E"><span class="i mono">04</span><span class="t">AI Boardroom</span><span class="g mono">AI · Agents</span></a></li>
+            <li><a href="#claude-counter" data-peek="/previews/claude-counter.webp" style="--c:#1fb5cf"><span class="i mono">05</span><span class="t">Claude Counter</span><span class="g mono">Open source</span></a></li>
+            <li><a href="#drivedash" data-peek="/previews/drivedash.webp" style="--c:#22c3ee"><span class="i mono">06</span><span class="t">DriveDash</span><span class="g mono">Android</span></a></li>
+          </ol>
+        </div>
+        <div class="timeline">
+          <div class="cap mono"><span>Timeline</span><span>Sep 2025 to Sep 2026</span></div>
+          <div class="tl-scroll">
+            <div class="tl">
+              <a href="#drivedash" style="--c:#22c3ee; grid-column: 1 / 9; grid-row: 1"><span class="n">DriveDash<small>8 mo</small></span><span class="bar"></span></a>
+              <a href="#bhashabuddy" style="--c:#FB8C6B; grid-column: 4 / 7; grid-row: 2"><span class="n">BhashaBuddy<small>3 mo</small></span><span class="bar"></span></a>
+              <a href="#satark" style="--c:#10b981; grid-column: 5 / 7; grid-row: 3"><span class="n">Satark.ai<small>Top 8</small></span><span class="bar"></span></a>
+              <a href="#prism" style="--c:#8b5cf6; grid-column: 8 / 10; grid-row: 2"><span class="n">PRISM<small>2 mo</small></span><span class="bar"></span></a>
+              <a href="#boardroom" style="--c:#D6A34E; grid-column: 11 / 12; grid-row: 1"><span class="n">AI Boardroom</span><span class="bar"></span></a>
+              <a class="end" href="#claude-counter" style="--c:#1fb5cf; grid-column: 13 / 14; grid-row: 2"><span class="n">Claude Counter</span><span class="bar"></span></a>
+              <span class="m mono" style="grid-column: 1"><b>Sep</b> 25</span>
+              <span class="m mono" style="grid-column: 2">Oct</span>
+              <span class="m mono" style="grid-column: 3">Nov</span>
+              <span class="m mono" style="grid-column: 4">Dec</span>
+              <span class="m mono" style="grid-column: 5"><b>Jan</b> 26</span>
+              <span class="m mono" style="grid-column: 6">Feb</span>
+              <span class="m mono" style="grid-column: 7">Mar</span>
+              <span class="m mono" style="grid-column: 8">Apr</span>
+              <span class="m mono" style="grid-column: 9">May</span>
+              <span class="m mono" style="grid-column: 10">Jun</span>
+              <span class="m mono" style="grid-column: 11">Jul</span>
+              <span class="m mono" style="grid-column: 12">Aug</span>
+              <span class="m mono" style="grid-column: 13">Sep</span>
+            </div>
+          </div>
+        </div>
       </header>
 
       <main class="works">
         <!-- 01 Satark.ai -->
-        <section class="work reveal" style="--accent:#10b981">
+        <section id="satark" class="work reveal" style="--accent:#10b981">
           <span class="ghost-num">01</span>
           <div class="media">
             <div class="accent-wash"></div>
-            <a class="frame" href="https://adaptive-honeypot-agent.vercel.app/" target="_blank" rel="noreferrer">
+            <a class="frame" data-cursor="Visit ↗" href="https://adaptive-honeypot-agent.vercel.app/" target="_blank" rel="noreferrer">
+              <div class="chrome"><i></i><i></i><i></i><span>adaptive-honeypot-agent.vercel.app</span></div>
               <img src="/previews/satark.webp" alt="Satark.ai preview" loading="lazy" />
             </a>
           </div>
@@ -228,7 +390,8 @@
             <div class="meta mono"><span class="num">01</span><span class="tag">AI · Safety</span></div>
             <h2>Satark.ai</h2>
             <p>An adaptive honeypot agent that spots scam messages in real time and replies like a genuinely worried human, quietly extracting phone numbers, UPI IDs, bank accounts and phishing links while the scammer thinks they're winning.</p>
-            <div class="tech"><span>Python</span><span>NLP</span><span>Transformers</span><span>FastAPI</span></div>
+            <dl class="facts mono"><div><dt>Year</dt><dd>2026</dd></div><div><dt>Status</dt><dd>Live</dd></div><div><dt>Highlight</dt><dd class="hi">Top 8 of 15,000+</dd></div></dl>
+            <div class="tech"><span>Node.js</span><span>Express</span><span>GPT-4.1-mini</span><span>Agents</span></div>
             <div class="cta">
               <a class="btn visit" href="https://adaptive-honeypot-agent.vercel.app/" target="_blank" rel="noreferrer">Visit ↗</a>
             </div>
@@ -236,11 +399,12 @@
         </section>
 
         <!-- 02 BhashaBuddy -->
-        <section class="work flip reveal" style="--accent:#FB8C6B">
+        <section id="bhashabuddy" class="work flip reveal" style="--accent:#FB8C6B">
           <span class="ghost-num">02</span>
           <div class="media">
             <div class="accent-wash"></div>
-            <a class="frame" href="https://parampara-one.vercel.app/" target="_blank" rel="noreferrer">
+            <a class="frame" data-cursor="Visit ↗" href="https://parampara-one.vercel.app/" target="_blank" rel="noreferrer">
+              <div class="chrome"><i></i><i></i><i></i><span>parampara-one.vercel.app</span></div>
               <img src="/previews/bhashabuddy.webp" alt="BhashaBuddy preview" loading="lazy" />
             </a>
           </div>
@@ -248,7 +412,8 @@
             <div class="meta mono"><span class="num">02</span><span class="tag">AI · Language</span></div>
             <h2>BhashaBuddy</h2>
             <p>A conversational language companion that adapts to the learner. Kids pick up Indian languages through stories, voice and play: language that feels like a friend, with no pressure.</p>
-            <div class="tech"><span>LLMs</span><span>Speech</span><span>React</span><span>Python</span></div>
+            <dl class="facts mono"><div><dt>Year</dt><dd>2025/26</dd></div><div><dt>Status</dt><dd>Live</dd></div><div><dt>Highlight</dt><dd class="hi">Active users</dd></div></dl>
+            <div class="tech"><span>React</span><span>Supabase</span><span>OpenAI API</span><span>TTS</span></div>
             <div class="cta">
               <a class="btn visit" href="https://parampara-one.vercel.app/" target="_blank" rel="noreferrer">Visit ↗</a>
             </div>
@@ -256,11 +421,12 @@
         </section>
 
         <!-- 03 PRISM -->
-        <section class="work reveal" style="--accent:#8b5cf6">
+        <section id="prism" class="work reveal" style="--accent:#8b5cf6">
           <span class="ghost-num">03</span>
           <div class="media">
             <div class="accent-wash"></div>
-            <a class="frame" href="https://prism-risk-rho.vercel.app/" target="_blank" rel="noreferrer">
+            <a class="frame" data-cursor="Visit ↗" href="https://prism-risk-rho.vercel.app/" target="_blank" rel="noreferrer">
+              <div class="chrome"><i></i><i></i><i></i><span>prism-risk-rho.vercel.app</span></div>
               <img src="/previews/parallel-risk.webp" alt="Parallel Risk-Assessment Agents preview" loading="lazy" />
             </a>
           </div>
@@ -268,6 +434,7 @@
             <div class="meta mono"><span class="num">03</span><span class="tag">AI · Agents</span></div>
             <h2>Parallel Risk-Assessment Agents</h2>
             <p>PRISM is a swarm of agents evaluating a decision from many angles at once, then reconciling into a single risk read. A parallel-AI underwriting console that shows the whole board thinking.</p>
+            <dl class="facts mono"><div><dt>Year</dt><dd>2026</dd></div><div><dt>Status</dt><dd>Live</dd></div><div><dt>Highlight</dt><dd class="hi">4 agents in parallel</dd></div></dl>
             <div class="tech"><span>Multi-Agent</span><span>LLMs</span><span>Next.js</span><span>Relevance AI</span></div>
             <div class="cta">
               <a class="btn visit" href="https://prism-risk-rho.vercel.app/" target="_blank" rel="noreferrer">Visit ↗</a>
@@ -277,11 +444,12 @@
         </section>
 
         <!-- 04 AI Boardroom -->
-        <section class="work flip reveal" style="--accent:#D6A34E">
+        <section id="boardroom" class="work flip reveal" style="--accent:#D6A34E">
           <span class="ghost-num">04</span>
           <div class="media">
             <div class="accent-wash"></div>
-            <a class="frame" href="https://ai-boardroom-umber.vercel.app/" target="_blank" rel="noreferrer">
+            <a class="frame" data-cursor="Visit ↗" href="https://ai-boardroom-umber.vercel.app/" target="_blank" rel="noreferrer">
+              <div class="chrome"><i></i><i></i><i></i><span>ai-boardroom-umber.vercel.app</span></div>
               <img src="/previews/ai-boardroom.webp" alt="AI Boardroom preview" loading="lazy" />
             </a>
           </div>
@@ -289,7 +457,8 @@
             <div class="meta mono"><span class="num">04</span><span class="tag">AI · Agents</span></div>
             <h2>AI Boardroom</h2>
             <p>A panel of AI personas that pressure-tests your idea like a real board, with a CEO, VC and engineers arguing it out, scrutinising the pitch until only the strong parts survive.</p>
-            <div class="tech"><span>LLMs</span><span>Agents</span><span>Prompt Systems</span></div>
+            <dl class="facts mono"><div><dt>Year</dt><dd>2026</dd></div><div><dt>Status</dt><dd>Live</dd></div><div><dt>Highlight</dt><dd class="hi">9 AI personas, solo</dd></div></dl>
+            <div class="tech"><span>TypeScript</span><span>LLMs</span><span>Multi-agent</span></div>
             <div class="cta">
               <a class="btn visit" href="https://ai-boardroom-umber.vercel.app/" target="_blank" rel="noreferrer">Visit ↗</a>
               <a class="btn code" href="https://github.com/Rohx24/AI-boardroom" target="_blank" rel="noreferrer">Code ↗</a>
@@ -297,11 +466,12 @@
           </div>
         </section>
         <!-- 05 Claude Counter -->
-        <section class="work reveal" style="--accent:#1fb5cf">
+        <section id="claude-counter" class="work reveal" style="--accent:#1fb5cf">
           <span class="ghost-num">05</span>
           <div class="media">
             <div class="accent-wash"></div>
-            <a class="frame" href="https://github.com/Rohx24/claude-counter" target="_blank" rel="noreferrer">
+            <a class="frame" data-cursor="Code ↗" href="https://github.com/Rohx24/claude-counter" target="_blank" rel="noreferrer">
+              <div class="chrome"><i></i><i></i><i></i><span>claude.ai · with Claude Counter</span></div>
               <img src="/previews/claude-counter.webp" alt="Claude Counter preview" loading="lazy" />
             </a>
           </div>
@@ -309,6 +479,7 @@
             <div class="meta mono"><span class="num">05</span><span class="tag">Open Source · Extension</span></div>
             <h2>Claude Counter</h2>
             <p>A browser extension that shows token count, cache timer and usage bars on claude.ai. I maintain a fork of <a href="https://github.com/she-llac/claude-counter" target="_blank" rel="noreferrer">she-llac/claude-counter</a>. I fixed its broken data bridge and missing storage permission, added a seconds countdown, and ship its releases: <b data-dl>200+</b> downloads so far.</p>
+            <dl class="facts mono"><div><dt>Year</dt><dd>2026</dd></div><div><dt>Status</dt><dd>v2.0.2 released</dd></div><div><dt>Highlight</dt><dd class="hi"><span data-dl>200+</span> downloads</dd></div></dl>
             <div class="tech"><span>JavaScript</span><span>Browser Extension</span><span>Open Source</span></div>
             <div class="cta">
               <a class="btn visit" href="https://github.com/Rohx24/claude-counter" target="_blank" rel="noreferrer">Code ↗</a>
@@ -316,11 +487,12 @@
           </div>
         </section>
         <!-- 06 DriveDash -->
-        <section class="work flip reveal" style="--accent:#22c3ee">
+        <section id="drivedash" class="work flip reveal" style="--accent:#22c3ee">
           <span class="ghost-num">06</span>
           <div class="media">
             <div class="accent-wash"></div>
-            <a class="frame" href="https://github.com/Rohx24/Drivedash" target="_blank" rel="noreferrer">
+            <a class="frame" data-cursor="Code ↗" href="https://github.com/Rohx24/Drivedash" target="_blank" rel="noreferrer">
+              <div class="chrome"><i></i><i></i><i></i><span>DriveDash · cover art</span></div>
               <img src="/previews/drivedash.webp" alt="DriveDash cover art: a traffic-coloured route and the app icon" loading="lazy" />
             </a>
           </div>
@@ -328,6 +500,7 @@
             <div class="meta mono"><span class="num">06</span><span class="tag">Android · Navigation</span></div>
             <h2>DriveDash</h2>
             <p>A navigation app for an always-on car tablet, built from scratch in Kotlin and Jetpack Compose. Turn-by-turn directions with live traffic-aware routing that reroutes within about 3 s of leaving the route, a heading-up camera with speed-adaptive zoom, a windshield HUD mode that mirrors the map for reflection onto glass, Spotify controls kept alive by a session watchdog, and an iPhone GPS relay that feeds a Kalman filter when the tablet's own GPS is weak.</p>
+            <dl class="facts mono"><div><dt>Year</dt><dd>2025/26</dd></div><div><dt>Status</dt><dd>v2.0</dd></div><div><dt>Highlight</dt><dd class="hi">33 Kotlin files</dd></div></dl>
             <div class="tech"><span>Kotlin</span><span>Jetpack Compose</span><span>Google Routes API</span><span>Spotify SDK</span></div>
             <div class="cta">
               <a class="btn visit" href="https://github.com/Rohx24/Drivedash" target="_blank" rel="noreferrer">Code ↗</a>
@@ -353,10 +526,19 @@
           <span class="alink mono">Paper</span>
         </div>
       </section>
+
+      <a class="next reveal" href="/lab.html">
+        <div>
+          <span class="k mono">Next · The Lab</span>
+          <h3>The work between the projects.</h3>
+          <p>Routing research on a national testbed, a deep dive into DriveDash, open source, and the trophy cabinet.</p>
+        </div>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a>
     </div>
 
     <footer class="reveal">
-      <div class="foot-word">ROHIT DIGGI</div>
+      <div class="foot-word" aria-label="Rohit Diggi"><span aria-hidden="true">R</span><span aria-hidden="true">O</span><span aria-hidden="true">H</span><span aria-hidden="true">I</span><span aria-hidden="true">T</span><span aria-hidden="true">&nbsp;</span><span aria-hidden="true">D</span><span aria-hidden="true">I</span><span aria-hidden="true">G</span><span aria-hidden="true">G</span><span aria-hidden="true">I</span></div>
       <div class="foot-meta mono">
         <a href="/">Home</a>
         <a href="https://github.com/Rohx24" target="_blank" rel="noreferrer">GitHub ↗</a>
@@ -374,6 +556,48 @@
         { threshold: 0.15 },
       );
       document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+      const FINE = matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches
+
+      // The ambient light and the rail follow the project in view.
+      const rail = [...document.querySelectorAll('.rail a')]
+      const lit = new IntersectionObserver((es) => {
+        for (const e of es) {
+          if (!e.isIntersecting) continue
+          document.body.style.setProperty('--amb', getComputedStyle(e.target).getPropertyValue('--accent').trim())
+          rail.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id))
+        }
+      }, { rootMargin: '-45% 0px -45% 0px' })
+      document.querySelectorAll('.work').forEach((w) => lit.observe(w))
+
+      // Pointer toys: the index preview, the badge over screenshots, the tilt.
+      if (FINE) {
+        const peek = document.getElementById('peek'), peekImg = peek.querySelector('img')
+        const badge = document.getElementById('badge')
+        const index = document.querySelector('.index')
+        let px = 0, py = 0, bx = 0, by = 0, tx = 0, ty = 0, raf = 0
+        const follow = () => {
+          px += (tx - px) * 0.18; py += (ty - py) * 0.18; bx += (tx - bx) * 0.35; by += (ty - by) * 0.35
+          // beside the index column, never over it, and level with the pointer
+          peek.style.transform = `translate(${index.getBoundingClientRect().left - peek.offsetWidth - 28}px, ${py - 90}px)`
+          badge.style.transform = `translate(${bx + 16}px, ${by + 16}px)`
+          raf = Math.abs(tx - px) + Math.abs(ty - py) > 0.4 ? requestAnimationFrame(follow) : 0
+        }
+        addEventListener('pointermove', (e) => { tx = e.clientX; ty = e.clientY; if (!raf) raf = requestAnimationFrame(follow) }, { passive: true })
+        document.querySelectorAll('.index a').forEach((a) => {
+          a.addEventListener('pointerenter', () => { peekImg.src = a.dataset.peek; peek.classList.add('on') })
+          a.addEventListener('pointerleave', () => peek.classList.remove('on'))
+        })
+        document.querySelectorAll('.frame').forEach((f) => {
+          const accent = getComputedStyle(f.closest('.work')).getPropertyValue('--accent').trim()
+          f.addEventListener('pointerenter', () => { badge.textContent = f.dataset.cursor; badge.style.setProperty('--bc', accent); badge.classList.add('on'); f.classList.add('live') })
+          f.addEventListener('pointermove', (e) => { badge.classList.add('on'); f.classList.add('live'); const r = f.getBoundingClientRect(); f.style.setProperty('--ry', ((e.clientX - r.left) / r.width - 0.5) * 10 + 'deg'); f.style.setProperty('--rx', (0.5 - (e.clientY - r.top) / r.height) * 7 + 'deg') })
+          f.addEventListener('pointerleave', () => { badge.classList.remove('on'); f.classList.remove('live'); f.style.removeProperty('--ry'); f.style.removeProperty('--rx') })
+        })
+        // a scroll can carry a screenshot out from under a still pointer: drop the
+        // badge and the preview, and let the next move over a frame bring it back
+        addEventListener('scroll', () => { badge.classList.remove('on'); peek.classList.remove('on') }, { passive: true })
+      }
 
       // Gentle parallax on the media slabs.
       const slabs = [...document.querySelectorAll('.work')];
