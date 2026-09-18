@@ -9,6 +9,7 @@ import { attachScroll, scrollProgress, tickScroll } from './scrollProgress'
 import { usePointerState } from '../systems/InteractionController'
 import { registerControls } from '../dev/controls'
 import { IS_MOBILE } from '../perf/quality'
+import { sceneCovered } from '../perf/sceneCover'
 
 // The scene is composed for a wide (landscape) frame. On a tall phone the wide
 // wordmark + wall crop off the sides. On mobile we widen the vertical FOV so the
@@ -70,8 +71,22 @@ export function ScrollController() {
     ])
   }, [])
 
+  // While the page covers the scene its frame loop is paused (perf/sceneCover),
+  // so scroll easing is stepped from here instead — exactly one of the two runs.
+  useEffect(() => {
+    let raf = 0
+    let last = performance.now()
+    const loop = (now: number) => {
+      if (sceneCovered()) tickScroll(Math.min((now - last) / 1000, 0.1))
+      last = now
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
   useFrame((_, dt) => {
-    tickScroll(dt)
+    if (!sceneCovered()) tickScroll(dt)
     const c = SCROLL.camera
 
     // Ease the lens from the hero framing out to SCROLL_FOV as the page scrolls

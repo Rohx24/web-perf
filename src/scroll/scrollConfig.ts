@@ -98,7 +98,7 @@ export const SCROLL = {
     // these are kept only as reference/first-paint values. `count`, `size`,
     // `visStart/visEnd`, `borderColor` and `spinTurns` are still read from here.
     /** Must match PROJECTS.length. */
-    count: 4,
+    count: 5,
 
     // --- Rising curved-frame carousel (alche's WorksThumbnails, adapted) -----
     // Ported straight from alche's WorksThumbnails.update. Each frame's signed

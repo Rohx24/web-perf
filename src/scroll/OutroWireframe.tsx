@@ -4,7 +4,8 @@ import { scrollProgress } from './scrollProgress'
 import { LIVE } from '../dev/live'
 import { scrambleAll } from './scramble'
 import { countUp } from './countUp'
-import { CrtLedScreen } from './CrtLedScreen'
+import { ContactSet } from './CrtChannels'
+import { setSceneCovered } from '../perf/sceneCover'
 import { IS_MOBILE } from '../perf/quality'
 import { drawLedPanel } from '../systems/ledPanel'
 
@@ -65,25 +66,30 @@ const SKILL_LINKS: Record<string, string[]> = {
 
 const ACHIEVEMENTS: [string, string, string][] = [
   [
-    'Top 8 Nationwide — HCL GUVI AI Impact Summit 2026',
-    '2026 · Team n0l0ck',
+    'Top 8 Nationwide · India AI Impact Buildathon',
+    'HCL GUVI · AI Impact Summit 2026 · Team N0Lock',
     'Scored 88/100 among 15,000+ teams at Bharat Mandapam with Satark.ai, an agentic honeypot API for real-time scam detection.',
   ],
   [
-    'Research Paper — SWSIoT-2025, with Springer',
+    'Research Paper · SWSIoT-2025, with Springer',
     'September 2025',
     'Co-authored and presented “Hybrid AI-Powered Framework for Real-Time DDoS Detection Using ML and Entropy-Based Analysis” at the Int’l Conference on Smart Wireless Systems and IoT.',
   ],
   [
-    '1st Prize — Avishkar Project Exhibition',
-    'Vemana Institute of Technology · ISTE & IEEE',
-    'First prize (INR 3,000) for a Traffic Management System at the inter-college exhibition.',
+    '1st Prize · IEEE Smart City Project Exhibition',
+    'Avishkar · Vemana Institute of Technology · ISTE & IEEE',
+    'First prize (INR 3,000) for Vimana ResQ, an emergency vehicle preemption system for traffic signals.',
+  ],
+  [
+    'Best Project · Structured Innovation',
+    'RV University',
+    'Conceived, designed and built an entirely new board game from scratch, original enough that it has been sent for patent filing.',
   ],
 ]
 
 const CERTS: [string, string, string][] = [
-  ['Affective Computing', 'NPTEL · 91/100', 'AI × psychology × design — machines that recognise and respond to human emotion.'],
-  ['Software Testing', 'NPTEL', '12-week course — test design, black/white-box techniques, automation, QA across the SDLC.'],
+  ['Affective Computing', 'NPTEL · 91/100', 'AI × psychology × design: machines that recognise and respond to human emotion.'],
+  ['Software Testing', 'NPTEL', '12-week course on test design, black/white-box techniques, automation and QA across the SDLC.'],
   ['Transformer Models & BERT', 'Simplilearn × Google Cloud', 'Attention mechanisms, transformer language modelling, and BERT in NLP tasks.'],
   ['Open Source Models with Hugging Face', 'Simplilearn SkillUp', 'The HF ecosystem, open-source model selection, and practical NLP usage.'],
   ['Introduction to LangGraph', 'Simplilearn SkillUp', 'Agentic workflow orchestration, stateful multi-step LLM pipelines, graph-based agents.'],
@@ -134,7 +140,7 @@ function SkillsAndStack() {
   return (
     <>
       <section className="rd-tile rd-tile--skills rd-reveal">
-        <span className="rd-w-label" data-scramble>02 — Skills</span>
+        <span className="rd-w-label" data-scramble>02 / Skills</span>
         <div className="rd-w-bars" data-focus={active ? '' : undefined}>
           {SKILLS.map(([name, lvl]) => (
             <div
@@ -339,9 +345,18 @@ export function OutroWireframe() {
       led.width = Math.max(1, led.offsetWidth)
       led.height = Math.max(1, led.offsetHeight)
     }
+    // Lamps near the pointer swell and brighten, so the wall answers the cursor.
+    const pointer = { x: -1e4, y: -1e4 }
+    const onPointer = (e: PointerEvent) => {
+      pointer.x = e.clientX
+      pointer.y = e.clientY
+    }
+    window.addEventListener('pointermove', onPointer, { passive: true })
     function drawLed(time: number) {
       if (!led || !lctx) return
-      drawLedPanel(lctx, led.width, led.height, time)
+      drawLedPanel(lctx, led.width, led.height, time, {
+        spot: { x: pointer.x, y: pointer.y, r: 170 },
+      })
     }
     sizeLed()
     let ledTick = 0
@@ -350,18 +365,6 @@ export function OutroWireframe() {
     const tick = () => {
       const s = scrollProgress()
 
-      // Mount / unmount the live LED mini-scene as the finale comes and goes.
-      const nearEnd = s > 0.72
-      if (nearEnd !== liveRef.current) {
-        liveRef.current = nearEnd
-        setLive(nearEnd)
-      }
-
-      // Animate the CRT + LED wall only when the abyss is near view. The snow
-      // redraws every frame (fast grain); its slow tune-in envelope lives in
-      // drawCrt. The abyss backdrop dot-matrix stays throttled to ~20fps.
-      if (s > 0.82) drawCrt()
-      if (s > 0.8 && ++ledTick % 3 === 0) drawLed(performance.now())
 
       // Pixel dissolve, held back (LIVE.outro) so the last pane leaves first.
       const fill = invlerp(LIVE.outro.gridStart, LIVE.outro.gridEnd, s)
@@ -376,6 +379,8 @@ export function OutroWireframe() {
       const slide = invlerp(0.5, 1.0, fill)
       if (whiteRef.current) {
         whiteRef.current.style.transform = `translateY(${(1 - slide) * 100}%)`
+        // Docked, the panel is opaque edge to edge: the 3D scene can stop (perf/sceneCover).
+        setSceneCovered(slide >= 1)
         /* The panel only takes the wheel once it has fully arrived. Interactive from
            halfway, a wheel over the centre scrolled the profile while it was still
            rising; now the page keeps the wheel, and keeps driving the rise, until it
@@ -415,6 +420,21 @@ export function OutroWireframe() {
         // Contact page rises up from the bottom, starting at 50% grid coverage.
         const up = invlerp(0.5, 1.0, f)
         abyssRef.current.style.transform = `translateY(${(1 - up) * 100}%)`
+
+        /* The live LED picture is a second WebGL renderer. It used to mount at the
+           last project card and run through the whole About section unseen; now it
+           mounts once the closing dissolve is a quarter in -- early enough to be up
+           before the set arrives -- and goes when the dissolve is scrolled back out. */
+        const want = liveRef.current ? f > 0.05 : f > 0.25
+        if (want !== liveRef.current) {
+          liveRef.current = want
+          setLive(want)
+        }
+        // The snow and the backdrop dot matrix only draw while the page is showing.
+        if (up > 0) {
+          drawCrt()
+          if (++ledTick % 2 === 0) drawLed(performance.now())
+        }
         // A whisper of fade at the very end so no seam shows behind the contact.
         outRef.current.style.opacity = String(1 - invlerp(0.9, 1.0, f))
       }
@@ -448,10 +468,21 @@ export function OutroWireframe() {
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', resize)
+      window.removeEventListener('pointermove', onPointer)
       observer.disconnect()
       detachScramble()
+      setSceneCovered(false)
     }
   }, [])
+
+  /* About: scroll the profile back to its top, which lowers the contact page with it.
+     Rewind: scroll the document to the top. The scene's eased, speed-capped scroll
+     then plays the whole site back in reverse on the way there. */
+  const toAbout = () => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  const rewind = () => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div className="rd-finale">
@@ -474,7 +505,7 @@ export function OutroWireframe() {
             <div className="rd-bento">
               {/* identity */}
               <section className="rd-tile rd-tile--id rd-reveal">
-                <span className="rd-w-label" data-scramble>01 — About</span>
+                <span className="rd-w-label" data-scramble>01 / About</span>
                 <h1 className="rd-w-name">Rohit Diggi</h1>
                 <p className="rd-w-bio">
                   AI/ML engineer and full-stack developer, pursuing a B.Tech (Hons.)
@@ -513,7 +544,7 @@ export function OutroWireframe() {
 
               {/* achievements */}
               <section className="rd-tile rd-tile--rec rd-reveal">
-                <span className="rd-w-label" data-scramble>03 — Achievements</span>
+                <span className="rd-w-label" data-scramble>03 / Achievements</span>
                 <ul className="rd-w-list">
                   {ACHIEVEMENTS.map(([t, m, d]) => (
                     <li key={t}>
@@ -527,7 +558,7 @@ export function OutroWireframe() {
 
               {/* certifications */}
               <section className="rd-tile rd-tile--rec rd-reveal">
-                <span className="rd-w-label" data-scramble>04 — Certifications</span>
+                <span className="rd-w-label" data-scramble>04 / Certifications</span>
                 <ul className="rd-w-list">
                   {CERTS.map(([t, m, d]) => (
                     <li key={t}>
@@ -561,45 +592,41 @@ export function OutroWireframe() {
       <div className="rd-crt-abyss" ref={abyssRef}>
         <canvas ref={ledRef} className="rd-led-wall" />
         <div className="rd-crt-glow" />
-        <div className="rd-crt">
-          <div className="rd-crt-screen">
-            {/* The live hero LED wall, playing behind the snow (mounted only near
-                the finale). The snow layer above it tunes in and out to reveal it. */}
-            {live && <CrtLedScreen />}
-            <canvas ref={crtRef} className="rd-crt-static" />
-            <div className="rd-crt-scan" />
-            <div className="rd-crt-content">
-              <span className="rd-crt-ch" data-scramble>CH 06 — CONTACT</span>
-              <h2 className="rd-crt-head" data-scramble>Contact me</h2>
-              <a
-                className="rd-crt-mail"
-                href="mailto:rohitdiggi@outlook.com"
-                data-scramble
-              >
-                rohitdiggi@outlook.com
-              </a>
-              <div className="rd-crt-links">
-                <a href="https://github.com/Rohx24" target="_blank" rel="noreferrer" data-scramble>
-                  GitHub ↗
-                </a>
-                {/* TODO: real LinkedIn URL */}
-                <a href="https://linkedin.com/in/rohit-j-d-b38069302" target="_blank" rel="noreferrer" data-scramble>
-                  LinkedIn ↗
-                </a>
-                {/* TODO: real WhatsApp number → https://wa.me/9198XXXXXXXX */}
-                <a href="https://wa.me/8861502347" target="_blank" rel="noreferrer" data-scramble>
-                  WhatsApp ↗
-                </a>
-              </div>
-              {/* Download only. The readable version lives on the title screen;
-                  by the time anyone is down here they want the file. */}
-              <a className="rd-crt-cv" href="/resume/Rohit-Diggi-Resume.pdf" download>
-                Download résumé ↓
-              </a>
-            </div>
-          </div>
-          <div className="rd-crt-badge">RD · 2026</div>
-        </div>
+        {/* The site header, back for the last page so there is a way out that
+            is not scrolling eleven screens up. */}
+        <header className="rd-fin-nav">
+          <button type="button" className="rd-fin-brand" onClick={rewind} data-scramble>
+            ROHIT DIGGI
+          </button>
+          <nav className="rd-fin-links">
+            <a href="/works.html" data-scramble>Work</a>
+            <button type="button" onClick={toAbout} data-scramble>About</button>
+            <a href="/lab.html" data-scramble>Lab</a>
+            <a href="/resume.html" target="_blank" rel="noopener" data-scramble>Résumé</a>
+          </nav>
+          <button type="button" className="rd-fin-rewind" onClick={rewind} aria-label="Rewind to the start">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2.6 8a5.4 5.4 0 1 0 1.6-3.85" />
+              <path d="M2.6 2.4v3.3h3.3" />
+            </svg>
+            Rewind
+          </button>
+        </header>
+        <ContactSet live={live} staticRef={crtRef} />
+        <footer className="rd-fin-foot">
+          <span>© 2026 Rohit Diggi · Bengaluru, IN</span>
+          <span className="rd-fin-hint">‹ › to change channel</span>
+        </footer>
       </div>
     </div>
   )

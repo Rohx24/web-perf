@@ -168,6 +168,12 @@ export const LED = {
     /** Beat between the page arriving and that first cut firing. Long enough to
      *  register the glyph field as a state of its own before it is replaced. */
     arriveDelay: 2,
+    /**
+     * How much likelier the diagonal bands are than any other programme when
+     * the next one is picked (everything else weighs 1). 2 roughly doubles how
+     * often they come round in the hero: about 1 cut in 4 instead of 1 in 7.
+     */
+    bandsWeight: 2,
     /** Seconds a programme holds before the next one is chosen. */
     holdSeconds: 6,
     /**

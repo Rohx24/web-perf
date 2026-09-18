@@ -24,8 +24,10 @@ export function CrtLedScreen() {
     <Canvas
       className="rd-crt-live"
       flat
-      dpr={[1, 2]}
-      gl={{ alpha: false, antialias: true }}
+      // It plays under a 40% snow veil and scanlines, so full retina resolution
+      // and MSAA bought nothing visible for the cost of a second renderer.
+      dpr={[1, 1.5]}
+      gl={{ alpha: false, antialias: false }}
       camera={{
         fov: VIEWER.fov,
         near: VIEWER.near,

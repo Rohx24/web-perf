@@ -4,6 +4,7 @@ import { Preload } from '@react-three/drei'
 import { QUALITY, IS_MOBILE } from './perf/quality'
 import { AdaptiveQuality } from './perf/AdaptiveQuality'
 import { INTRO_DPR, onRevealDone, revealDone } from './perf/introState'
+import { onSceneCovered } from './perf/sceneCover'
 import { StatsProbe } from './perf/Stats'
 import { GridLayer } from './scene/GridLayer'
 import { MarkerLayer } from './scene/MarkerLayer'
@@ -27,13 +28,20 @@ export default function App() {
   // Stop rendering entirely while the tab is hidden. This is visually lossless —
   // nothing is on screen to change — and spares the GPU/CPU (and, on a laptop,
   // the thermal budget that a background transmission pass would otherwise burn).
-  const [frameloop, setFrameloop] = useState<'always' | 'never'>('always')
+  // The same pause while the About panel or the contact page covers the whole
+  // viewport (see perf/sceneCover): nothing of the scene is visible then either.
+  const [hidden, setHidden] = useState(false)
+  const [covered, setCovered] = useState(false)
   useEffect(() => {
-    const onVisibility = () =>
-      setFrameloop(document.hidden ? 'never' : 'always')
+    const onVisibility = () => setHidden(document.hidden)
     document.addEventListener('visibilitychange', onVisibility)
-    return () => document.removeEventListener('visibilitychange', onVisibility)
+    const offCover = onSceneCovered(setCovered)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      offCover()
+    }
   }, [])
+  const frameloop = hidden || covered ? 'never' : 'always'
 
   // Live render resolution. Starts at the device's tier ceiling, then
   // AdaptiveQuality raises/lowers it from the *measured* frame rate — so any

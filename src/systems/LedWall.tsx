@@ -737,7 +737,15 @@ export function LedWall() {
         const others = roster.filter((id) => id !== current)
         const next = others.length > 0 ? others : roster
 
-        const chosen = next[Math.floor(Math.random() * next.length)]
+        // Weighted, so the bands come round more often than the rest.
+        const weight = (id: number) =>
+          id === PROGRAM.bands ? LED.programs.bandsWeight : 1
+        let pick = Math.random() * next.reduce((sum, id) => sum + weight(id), 0)
+        let chosen = next[next.length - 1]
+        for (const id of next) {
+          pick -= weight(id)
+          if (pick < 0) { chosen = id; break }
+        }
         uniforms.uProgramB.value = chosen
         // Each time the bands come round, flip the diagonal at random, so it
         // alternates between the original lean and its mirror rather than always

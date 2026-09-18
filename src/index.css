@@ -899,7 +899,8 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(40px, 8vw, 120px) 24px;
+  /* room for the header above the set and the footer below it */
+  padding: 72px 16px 56px;
   background: #000;
   transform: translateY(100%);
   will-change: transform;
@@ -943,8 +944,10 @@ canvas {
   /* The `88vh` cap keeps the whole set (4:3 screen + chassis) shorter than the
      viewport, so on short/wide windows it can't overflow the abyss (which is
      parked one screen-height down at rest) and poke up into the hero. */
-  width: min(820px, 92vw, 88vh);
-  padding: 30px 30px 44px;
+  /* The height cap keeps the set + knob strip + ticker inside the viewport once
+     the header and footer take their share: total ≈ 0.75·width + 250px. */
+  width: min(820px, 92vw, calc((100vh - 252px) * 1.33));
+  padding: 30px 30px 18px;
   border-radius: 26px;
   background: linear-gradient(160deg, #2a2c31, #141518 55%, #0c0d10);
   box-shadow:
@@ -1055,11 +1058,290 @@ canvas {
   color: #fff;
 }
 .rd-crt-badge {
-  margin-top: 16px;
-  text-align: right;
   font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.2em;
   color: #6b7280;
+}
+
+/* ---- the contact set as a working television -------------------------------- */
+.rd-crt-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+/* one channel at a time; hidden ones leave the pointer alone */
+.rd-crt-content {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+}
+.rd-crt-content[data-on] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.25s ease 0.14s;
+}
+/* the set's on-screen display: green, blocky, gone after a beat */
+.rd-crt-osd {
+  position: absolute;
+  top: 7%;
+  right: 7%;
+  font: 700 clamp(14px, 2.2vw, 22px) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.12em;
+  color: #7dff9a;
+  text-shadow: 0 0 10px rgba(125, 255, 154, 0.7);
+  pointer-events: none;
+  animation: rd-osd 1.8s steps(1, end) forwards;
+}
+@keyframes rd-osd {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.rd-crt-say {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 360px);
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px dashed rgba(127, 224, 208, 0.35);
+  border-radius: 8px;
+  pointer-events: auto;
+  color: #7fe0d0;
+  font-size: 12px;
+}
+.rd-crt-say input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: #eaf4ff;
+  font: inherit;
+  letter-spacing: 0.04em;
+  caret-color: #7dff9a;
+}
+.rd-crt-say input::placeholder {
+  color: rgba(207, 230, 255, 0.45);
+}
+.rd-crt-say:focus-within {
+  border-color: rgba(125, 255, 154, 0.7);
+}
+.rd-crt-clock {
+  font: 700 clamp(2rem, 7vw, 4.2rem) / 1 'Space Grotesk', sans-serif;
+  letter-spacing: -0.01em;
+  color: #eaf4ff;
+}
+.rd-crt-sub {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #7fd0ff;
+}
+.rd-crt-live-link {
+  pointer-events: auto;
+  text-decoration: none;
+}
+.rd-crt-live-link:hover {
+  color: #fff;
+}
+.rd-crt-list,
+.rd-crt-work {
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(10px, 1.4vw, 12.5px);
+  line-height: 1.9;
+  letter-spacing: 0.04em;
+}
+.rd-crt-work li {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.rd-crt-work li span {
+  color: #7fd0ff;
+}
+.rd-crt-work a {
+  color: #eaf4ff;
+  text-decoration: none;
+  pointer-events: auto;
+}
+.rd-crt-work a:hover {
+  color: #7dff9a;
+}
+.rd-crt-credits {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 6px;
+  font-size: clamp(10px, 1.4vw, 12.5px);
+}
+.rd-crt-credits div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.rd-crt-credits dt {
+  text-align: right;
+  color: #7fd0ff;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.85em;
+}
+.rd-crt-credits dd {
+  margin: 0;
+  text-align: left;
+  color: #eaf4ff;
+}
+/* the knob strip on the bezel */
+.rd-crt-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+.rd-crt-power {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7dff9a;
+  box-shadow: 0 0 8px #7dff9a;
+}
+.rd-crt-knob {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  pointer-events: auto;
+}
+.rd-crt-knob button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: radial-gradient(circle at 35% 30%, #3a3d44, #16171a 70%);
+  color: #cfd6e2;
+  font: 600 16px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.rd-crt-knob button:hover,
+.rd-crt-knob button:focus-visible {
+  border-color: rgba(125, 255, 154, 0.7);
+  color: #7dff9a;
+  outline: none;
+}
+/* until the knob is first turned, the forward button pulses to be found */
+.rd-crt-knob button[data-hint] {
+  animation: rd-knob-hint 1.8s ease-in-out infinite;
+}
+@keyframes rd-knob-hint {
+  50% { box-shadow: 0 0 0 5px rgba(125, 255, 154, 0.18); border-color: rgba(125, 255, 154, 0.6); }
+}
+.rd-crt-chnum {
+  min-width: 13ch;
+  text-align: center;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #9aa3b2;
+}
+/* the LED crawl under the set */
+.rd-crt-ticker {
+  width: 100%;
+  height: clamp(28px, 4.6vw, 42px);
+  display: block;
+}
+
+/* the header and footer of the last page */
+.rd-fin-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px clamp(16px, 3vw, 40px) 34px;
+  /* a dark fade so the lamps behind don't run through the links */
+  background: linear-gradient(#000 45%, transparent);
+  pointer-events: auto;
+  font: 500 12px/1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.12em;
+  color: #e8ecf3;
+}
+.rd-fin-nav button,
+.rd-fin-nav a {
+  background: none;
+  border: 0;
+  padding: 6px 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.rd-fin-nav button:hover,
+.rd-fin-nav a:hover {
+  color: #7dff9a;
+}
+.rd-fin-brand {
+  font-weight: 700 !important;
+  letter-spacing: 0.3em !important;
+}
+.rd-fin-links {
+  display: flex;
+  gap: clamp(14px, 3vw, 40px);
+}
+.rd-fin-rewind {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 999px;
+}
+.rd-fin-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 30px clamp(16px, 3vw, 40px) 18px;
+  background: linear-gradient(transparent, #000 55%);
+  font: 500 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #5d6572;
+}
+@media (max-width: 640px) {
+  .rd-fin-brand,
+  .rd-fin-hint {
+    display: none;
+  }
+  .rd-fin-nav {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+  .rd-fin-rewind {
+    padding: 7px 12px !important;
+  }
+  .rd-crt {
+    padding: 16px 16px 12px;
+  }
+  .rd-crt-say {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-crt-osd,
+  .rd-crt-knob button[data-hint] {
+    animation: none;
+  }
 }
 .rd-w-top {
   display: flex;
@@ -1481,4 +1763,12 @@ button.rd-tile--stat {
   .rd-w-skills span {
     transition: none;
   }
+}
+
+/* live download count under the active project (see releaseDownloads) */
+.rd-active-stat {
+  margin-top: 0.6em;
+  font: 500 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+  color: #6ee7f9;
 }

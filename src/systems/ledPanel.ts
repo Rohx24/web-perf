@@ -25,6 +25,8 @@ export interface LedPanelOptions {
   radius?: number
   /** overall brightness multiplier */
   gain?: number
+  /** lamps within `r` px of (x, y) swell and brighten, e.g. under the pointer */
+  spot?: { x: number; y: number; r: number }
 }
 
 /**
@@ -42,6 +44,7 @@ export function drawLedPanel (
   const r = opts.radius ?? 3.4
   const gain = opts.gain ?? 1
   const t = timeMs * 0.001
+  const spot = opts.spot
 
   ctx.clearRect(0, 0, w, h)
   for (let y = pitch / 2; y < h; y += pitch) {
@@ -59,13 +62,22 @@ export function drawLedPanel (
       const fr = g - Math.floor(g)
       const c0 = LED_PALETTE[i0]
       const c1 = LED_PALETTE[i1]
-      const bright = (0.35 + 0.65 * (Math.sin(u * 11 + v * 9 + t * 3) * 0.5 + 0.5)) * gain
-      const R = (c0[0] + (c1[0] - c0[0]) * fr) * bright
-      const G = (c0[1] + (c1[1] - c0[1]) * fr) * bright
-      const B = (c0[2] + (c1[2] - c0[2]) * fr) * bright
+      let bright = (0.35 + 0.65 * (Math.sin(u * 11 + v * 9 + t * 3) * 0.5 + 0.5)) * gain
+      let k = 0
+      if (spot) {
+        const d = Math.hypot(x - spot.x, y - spot.y)
+        if (d < spot.r) {
+          k = 1 - d / spot.r
+          k *= k
+          bright = Math.min(1.6, bright * (1 + 1.4 * k))
+        }
+      }
+      const R = Math.min(255, (c0[0] + (c1[0] - c0[0]) * fr) * bright)
+      const G = Math.min(255, (c0[1] + (c1[1] - c0[1]) * fr) * bright)
+      const B = Math.min(255, (c0[2] + (c1[2] - c0[2]) * fr) * bright)
       ctx.fillStyle = `rgb(${R | 0},${G | 0},${B | 0})`
       ctx.beginPath()
-      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.arc(x, y, r * (1 + 0.55 * k), 0, Math.PI * 2)
       ctx.fill()
     }
   }

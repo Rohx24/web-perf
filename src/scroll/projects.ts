@@ -22,6 +22,12 @@ export type Project = {
    * slot still works and a real image can be dropped in here later.
    */
   image?: string
+  /**
+   * A live download count shown under the active project: the sum of this repo's
+   * release-asset downloads, read from GitHub. `fallback` shows if that fails, so
+   * it has to be a figure that is already true.
+   */
+  downloads?: { repo: string; fallback: string }
 }
 
 export const PROJECTS: Project[] = [
@@ -60,11 +66,23 @@ export const PROJECTS: Project[] = [
     index: '04',
     title: 'AI Boardroom',
     categoryTag: 'AI · Agents',
-    blurb: 'A panel of AI personas that pressure-tests an idea like a real board — CEO, VC and engineers arguing it out.',
+    blurb: 'A panel of AI personas that pressure-tests an idea like a real board, with a CEO, VC and engineers arguing it out.',
     tech: ['LLMs', 'Agents', 'Prompt Systems'],
     // Dark site with warm gold/amber accents.
     accent: '#D6A34E',
     launchUrl: 'https://ai-boardroom-umber.vercel.app/',
     image: '/previews/ai-boardroom.webp',
+  },
+  {
+    index: '05',
+    title: 'Claude Counter',
+    categoryTag: 'Open Source · Extension',
+    blurb: 'A browser extension showing token count, cache timer and usage bars on claude.ai. I maintain a fork: fixed its data bridge and storage permission, added a seconds countdown, and ship its releases.',
+    tech: ['JavaScript', 'Browser Extension', 'Open Source'],
+    // Cyan off the LED ramp, clear of AI Boardroom's gold beside it.
+    accent: '#1fb5cf',
+    launchUrl: 'https://github.com/Rohx24/claude-counter',
+    image: '/previews/claude-counter.webp',
+    downloads: { repo: 'Rohx24/claude-counter', fallback: '200+' },
   },
 ]

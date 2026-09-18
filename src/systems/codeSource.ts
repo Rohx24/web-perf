@@ -82,7 +82,7 @@ const SECRET = [
   'if you are reading this, you found it.',
   '',
   'this wall is one cylinder.',
-  'there is no dot geometry anywhere in it —',
+  'there is no dot geometry anywhere in it:',
   'every emitter is computed per fragment,',
   'which is why it costs one draw call',
   'whether there are ten thousand or a million.',

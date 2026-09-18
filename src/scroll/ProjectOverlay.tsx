@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { PROJECTS } from './projects'
+import { releaseDownloads } from './releaseDownloads'
 import { SCROLL } from './scrollConfig'
 import { scrollProgress } from './scrollProgress'
 import { scrambleAll } from './scramble'
@@ -32,6 +33,9 @@ export function ProjectOverlay() {
   const titleRef = useRef<HTMLDivElement>(null)
   const techRef = useRef<HTMLDivElement>(null)
   const visitRef = useRef<HTMLAnchorElement>(null)
+  const statRef = useRef<HTMLDivElement>(null)
+  /** The live download figure once GitHub answers; null means show the fallback. */
+  const dlText = useRef<string | null>(null)
   const shown = useRef(-1)
 
   useEffect(() => {
@@ -69,6 +73,14 @@ export function ProjectOverlay() {
             visitRef.current.style.display = 'none'
           }
         }
+        if (statRef.current) {
+          if (p.downloads) {
+            statRef.current.textContent = `↓ ${dlText.current ?? p.downloads.fallback} downloads`
+            statRef.current.style.display = 'block'
+          } else {
+            statRef.current.style.display = 'none'
+          }
+        }
       }
       if (infoRef.current) {
         infoRef.current.style.opacity = String(inGallery)
@@ -89,6 +101,22 @@ export function ProjectOverlay() {
     return () => {
       cancelAnimationFrame(raf)
       detachScramble()
+    }
+  }, [])
+
+  // One fetch for the project that carries a live count; when it lands, force the
+  // active copy to repaint so an already-shown project picks up the real figure.
+  useEffect(() => {
+    const dp = PROJECTS.find((p) => p.downloads)
+    if (!dp?.downloads) return
+    let alive = true
+    releaseDownloads(dp.downloads.repo).then((n) => {
+      if (!alive || n === null) return
+      dlText.current = n.toLocaleString()
+      shown.current = -1
+    })
+    return () => {
+      alive = false
     }
   }, [])
 
@@ -114,7 +142,7 @@ export function ProjectOverlay() {
           >
             About
           </a>
-          <a href="#lab" data-scramble>Lab</a>
+          <a href="/lab.html" data-scramble>Lab</a>
         </div>
         <a className="rd-nav-cta" href="mailto:rohitjd.btech23@rvu.edu.in" data-scramble>
           Contact ↗
@@ -134,6 +162,7 @@ export function ProjectOverlay() {
         </div>
         <div ref={titleRef} className="rd-active-title" />
         <div ref={techRef} className="rd-active-tech" />
+        <div ref={statRef} className="rd-active-stat" style={{ display: 'none' }} />
         <a
           ref={visitRef}
           className="rd-active-visit"

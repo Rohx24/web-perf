@@ -48,8 +48,9 @@ export const LIVE = {
   /** The outro pixel-grid dissolve (OutroWireframe). */
   outro: {
     /** Scroll at which the grid begins filling — held back so the last pane has
-     *  scrolled away first, then the grid appears behind it. */
-    gridStart: 0.775,
+     *  scrolled away first, then the grid appears behind it. Sits at the last
+     *  card's centre (cardCentreS(count - 1)): move it with gallery.count. */
+    gridStart: 0.79,
     /** Scroll by which the grid has fully filled. */
     gridEnd: 0.925,
   },

@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lab · Rohit Diggi</title>
+    <meta name="description" content="Research, a featured Android build, open source, collaborations and wins by Rohit Diggi." />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/space-grotesk.ttf" as="font" type="font/ttf" crossorigin />
+    <style>
+      @font-face { font-family: 'Space Grotesk'; src: url('/fonts/space-grotesk.ttf') format('truetype'); font-weight: 300 700; font-display: swap; }
+      :root {
+        --bg: #0b0b0c;
+        --panel: #121214;
+        --panel-2: #17171a;
+        --ink: #ecece8;
+        --soft: #b9b9b3;
+        --muted: #8d8d87;
+        --line: rgba(255, 255, 255, 0.08);
+        --accent: #d4ff3f;
+        --cyan: #4ee2ff;
+        --red: #ff5a4e;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --sans: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { background: var(--bg); scroll-behavior: smooth; }
+      body { background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+      /* film grain: one static noise tile, blended over everything */
+      body::after {
+        content: ''; position: fixed; inset: 0; z-index: 90; pointer-events: none; opacity: 0.07; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      a { color: inherit; }
+      img { display: block; max-width: 100%; }
+      .mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+      .wrap { max-width: 1240px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); }
+      ::selection { background: var(--accent); color: #0b0b0c; }
+
+      /* ---- header ---- */
+      .top { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid var(--line); }
+      .top .wrap { display: flex; align-items: center; justify-content: space-between; height: 62px; gap: 16px; }
+      .mark { font: 700 18px/1 var(--sans); letter-spacing: 0.04em; text-decoration: none; }
+      .mark span { color: var(--accent); }
+      .nav { display: flex; align-items: center; gap: clamp(12px, 2.4vw, 30px); }
+      .nav a, .nav button { text-decoration: none; color: var(--muted); transition: color 0.2s; background: none; border: 0; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+      .nav a:hover, .nav button:hover, .nav a[aria-current='page'] { color: var(--ink); }
+      .nav a[aria-current='page']::before { content: '● '; color: var(--accent); }
+      .nav .term-btn { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; color: var(--accent); }
+      .progress { position: absolute; left: 0; bottom: -1px; height: 1px; width: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); }
+
+      /* ---- hero ---- */
+      .hero { padding-top: clamp(40px, 7vw, 96px); padding-bottom: clamp(32px, 5vw, 56px); }
+      .kicker { color: var(--accent); }
+      .dots { display: block; width: 100%; height: clamp(170px, 27vw, 380px); margin: 18px 0 26px; touch-action: pan-y; }
+      .lede { max-width: 36rem; font-size: clamp(1.05rem, 1.6vw, 1.3rem); color: #c9c9c3; }
+      .pulse { display: inline-flex; align-items: center; gap: 10px; margin-top: 26px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; animation: ping 2.2s ease-out infinite; }
+      @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(212, 255, 63, 0.55); } 70%, 100% { box-shadow: 0 0 0 9px rgba(212, 255, 63, 0); } }
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: clamp(36px, 5vw, 64px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .stat { padding: 24px 18px 22px 0; }
+      .stat + .stat { padding-left: 18px; border-left: 1px solid var(--line); }
+      .stat b { display: block; font: 700 clamp(2rem, 4.4vw, 3.4rem)/1 var(--sans); letter-spacing: -0.03em; }
+      .stat span { display: block; margin-top: 10px; color: var(--muted); }
+
+      /* ---- marquee ---- */
+      .marquee { overflow: hidden; border-bottom: 1px solid var(--line); padding: 18px 0; white-space: nowrap; }
+      .marquee div { display: inline-flex; gap: 38px; padding-right: 38px; animation: slide 38s linear infinite; font: 700 clamp(1.6rem, 4vw, 3rem)/1 var(--sans); letter-spacing: -0.02em; }
+      .marquee.rev div { animation-direction: reverse; animation-duration: 46s; }
+      .marquee span:nth-child(odd) { color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.35); }
+      .marquee i { font-style: normal; color: var(--accent); }
+      @keyframes slide { to { transform: translateX(-100%); } }
+
+      /* ---- sections ---- */
+      /* vertical only: the .wrap on the same element owns the side gutters */
+      section.block { padding-top: clamp(56px, 8vw, 112px); padding-bottom: clamp(56px, 8vw, 112px); border-bottom: 1px solid var(--line); scroll-margin-top: 62px; }
+      .tag { display: flex; align-items: center; gap: 14px; white-space: nowrap; margin-bottom: clamp(26px, 4vw, 44px); color: var(--muted); }
+      .tag b { color: var(--accent); font-weight: 500; }
+      /* a specimen label: the barcode is just stripes */
+      .tag .code { width: 74px; height: 14px; opacity: 0.55; background: repeating-linear-gradient(90deg, var(--ink) 0 1px, transparent 1px 3px, var(--ink) 3px 5px, transparent 5px 6px, var(--ink) 6px 7px, transparent 7px 10px); }
+      .tag .rule { flex: 1; height: 1px; background: var(--line); }
+      h2 { font: 700 clamp(2rem, 5vw, 3.8rem)/1.02 var(--sans); letter-spacing: -0.035em; max-width: 18ch; }
+      h3 { font: 600 clamp(1.2rem, 2vw, 1.55rem)/1.2 var(--sans); letter-spacing: -0.02em; }
+      .meta { color: var(--accent); margin: 8px 0 12px; }
+      p.body { color: var(--soft); max-width: 44rem; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+      .chips span { padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+      .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; transition: background 0.2s, color 0.2s, border-color 0.2s; font-size: 15px; }
+      .btn:hover { border-color: var(--accent); }
+      .btn--solid { background: var(--accent); color: #0b0b0c; border-color: var(--accent); font-weight: 600; }
+      .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+      .caption { margin-top: 10px; color: var(--muted); font: 500 10.5px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+      /* research: two instruments */
+      .instruments { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(16px, 2.4vw, 28px); margin-top: clamp(26px, 4vw, 44px); }
+      .instrument { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px 14px 22px; }
+      .instrument canvas { display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; background: #0d0d0f; cursor: crosshair; }
+      .instrument .txt { padding: 18px 8px 0; }
+
+      /* featured build */
+      .feature { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 4vw, 56px); align-items: start; margin-top: clamp(26px, 4vw, 44px); }
+      .tablet { position: relative; padding: 14px; border-radius: 26px; background: linear-gradient(160deg, #26272b, #111114 60%); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+      .tablet canvas { display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 14px; background: #06090d; transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+      .tablet[data-hud] canvas { transform: scaleX(-1); }
+      .tablet-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; color: var(--muted); }
+      .toggle { display: inline-flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--ink); cursor: pointer; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+      .toggle i { width: 28px; height: 16px; border-radius: 999px; background: #2a2a2e; position: relative; transition: background 0.25s; }
+      .toggle i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); transition: transform 0.25s; }
+      .toggle[aria-pressed='true'] i { background: var(--cyan); }
+      .toggle[aria-pressed='true'] i::after { transform: translateX(12px); }
+      .appid { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+      .appid img { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 0 34px rgba(78, 226, 255, 0.35); }
+      .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; margin-top: 26px; }
+      .fgrid h4 { font: 500 11px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cyan); margin-bottom: 8px; }
+      .fgrid ul { list-style: none; color: var(--soft); font-size: 14.5px; line-height: 1.5; }
+      .fgrid li { padding: 3px 0; }
+      .fgrid li::before { content: '→ '; color: var(--muted); }
+      .log { margin-top: 30px; border-top: 1px solid var(--line); counter-reset: log; }
+      .log li { list-style: none; display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); color: var(--soft); font-size: 14.5px; }
+      .log li::before { counter-increment: log; content: counter(log, decimal-leading-zero); font-family: var(--mono); font-size: 12px; color: var(--accent); padding-top: 2px; }
+      .log b { color: var(--ink); font-weight: 600; }
+      .ministats { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 26px; }
+      .ministats div b { display: block; font: 700 1.9rem/1 var(--sans); letter-spacing: -0.03em; }
+      .ministats div span { color: var(--muted); font: 500 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+      /* shots: real screenshots in frames */
+      .split { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(24px, 4vw, 56px); align-items: center; margin-top: clamp(26px, 4vw, 44px); }
+      .split.flip > :first-child { order: 2; }
+      .shot { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); transform: perspective(1200px) rotateY(-4deg) rotateX(2deg); transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5); }
+      .split.flip .shot { transform: perspective(1200px) rotateY(4deg) rotateX(2deg); }
+      .shot:hover, .split.flip .shot:hover { transform: none; }
+      .chrome { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: #17171a; }
+      .chrome i { width: 9px; height: 9px; border-radius: 50%; background: #3a3a3f; }
+      .chrome span { margin-left: 10px; padding: 4px 10px; border-radius: 6px; background: #0f0f11; color: var(--muted); font: 500 11px/1 var(--mono); letter-spacing: 0.02em; text-transform: none; }
+      .count b { display: block; font: 700 clamp(3.4rem, 8vw, 6.2rem)/0.9 var(--sans); letter-spacing: -0.05em; color: var(--accent); }
+      .count span { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; color: var(--muted); }
+      .changes { list-style: none; margin-top: 18px; border-top: 1px solid var(--line); }
+      .changes li { padding: 10px 0; border-bottom: 1px solid var(--line); color: #c9c9c3; }
+      .changes li::before { content: '+ '; font-family: var(--mono); color: var(--accent); }
+
+      /* wins: holographic cards */
+      .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(12px, 1.6vw, 20px); margin-top: clamp(26px, 4vw, 44px); }
+      .card {
+        --mx: 50%; --my: 50%; --rx: 0deg; --ry: 0deg;
+        position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; min-height: 440px;
+        padding: 18px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.12);
+        background: linear-gradient(170deg, #1a1a1d, #0f0f11 70%);
+        transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+        transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s;
+      }
+      .card.live { transition: transform 0.08s linear, border-color 0.3s; border-color: rgba(212, 255, 63, 0.45); }
+      .card::before { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; transition: opacity 0.3s; mix-blend-mode: color-dodge;
+        background: conic-gradient(from 200deg at var(--mx) var(--my), #ff4ecd, #4ee2ff, #d4ff3f, #ffcf4e, #ff4ecd); filter: saturate(1.3) blur(10px); }
+      .card::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+        background: radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.28), transparent 42%); }
+      .card.live::before { opacity: 0.24; }
+      .card.live::after { opacity: 1; }
+      .card .art { height: 150px; border-radius: 12px; overflow: hidden; background: #0b0b0d; border: 1px solid var(--line); display: grid; place-items: center; }
+      .card .art img { width: 100%; height: 100%; object-fit: cover; }
+      .card .art svg { width: 70%; height: 80%; }
+      .card .rank { margin-top: 18px; font: 700 3rem/0.9 var(--sans); letter-spacing: -0.04em; color: var(--accent); }
+      .card .rank small { font: 500 11px/1 var(--mono); letter-spacing: 0.1em; color: var(--muted); margin-left: 6px; }
+      .card h3 { margin-top: 12px; font-size: 1.15rem; }
+      .card p { margin-top: 8px; color: var(--soft); font-size: 14px; line-height: 1.5; }
+      .card .foot { margin-top: auto; padding-top: 16px; display: flex; justify-content: space-between; color: var(--muted); font: 500 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+      /* experiments + now */
+      .rows { margin-top: clamp(26px, 4vw, 44px); border-top: 1px solid var(--line); }
+      .row { display: grid; grid-template-columns: 60px 1fr auto; gap: 0 24px; padding: 26px 12px 26px 0; border-bottom: 1px solid var(--line); transition: background 0.25s, padding-left 0.25s; }
+      .row:hover { background: linear-gradient(90deg, rgba(212, 255, 63, 0.06), transparent 70%); padding-left: 12px; }
+      .row .n { color: var(--muted); padding-top: 5px; }
+      .row .links { padding-top: 5px; }
+      .row .links a { text-decoration: none; border-bottom: 1px solid var(--line); }
+      .row .links a:hover { color: var(--accent); border-color: var(--accent); }
+      .now p { font-size: clamp(1.25rem, 2.4vw, 1.9rem); line-height: 1.35; max-width: 46rem; letter-spacing: -0.015em; }
+      .now p b { color: var(--accent); font-weight: 600; }
+
+      footer { padding: clamp(56px, 8vw, 104px) 0 40px; }
+      .word { display: flex; flex-wrap: wrap; font: 700 clamp(3rem, 13.5vw, 11.5rem)/0.85 var(--sans); letter-spacing: -0.06em; user-select: none; }
+      .word span { color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.2); transition: color 0.35s, -webkit-text-stroke-color 0.35s; }
+      .word span:hover { color: var(--accent); -webkit-text-stroke-color: var(--accent); transition-duration: 0.05s; }
+      .foot-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-top: 28px; color: var(--muted); }
+      .foot-row a { text-decoration: none; }
+      .foot-row a:hover, .foot-row button:hover { color: var(--accent); }
+      .foot-row button { background: none; border: 0; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+      kbd { padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--accent); font: inherit; }
+
+      /* reveal on scroll */
+      [data-reveal] { opacity: 0; transform: translateY(26px); transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+      [data-reveal].in { opacity: 1; transform: none; }
+
+      /* the instrument cursor: a ring and a coordinate readout (fine pointers only) */
+      .ring, .readout { position: fixed; z-index: 95; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
+      .ring { top: 0; left: 0; width: 28px; height: 28px; margin: -14px 0 0 -14px; border: 1px solid var(--accent); border-radius: 50%; transition: opacity 0.3s, width 0.2s, height 0.2s, margin 0.2s, background 0.2s; }
+      .ring.big { width: 54px; height: 54px; margin: -27px 0 0 -27px; background: rgba(212, 255, 63, 0.08); }
+      .readout { left: 16px; bottom: 14px; color: var(--muted); font: 500 10px/1 var(--mono); letter-spacing: 0.12em; }
+      @media (pointer: fine) { body.pointer .ring, body.pointer .readout { opacity: 1; } }
+
+      /* the terminal (press /) */
+      .term { position: fixed; right: clamp(12px, 3vw, 32px); bottom: clamp(12px, 3vw, 32px); z-index: 100; width: min(560px, calc(100vw - 24px)); height: min(380px, 70vh); display: none; flex-direction: column; background: rgba(8, 8, 9, 0.96); border: 1px solid rgba(212, 255, 63, 0.35); border-radius: 12px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7); font: 13px/1.55 var(--mono); color: #d8f7a0; }
+      .term[open] { display: flex; }
+      .term header { display: flex; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+      .term header button { background: none; border: 0; color: var(--muted); cursor: pointer; font: inherit; }
+      .term .out { flex: 1; overflow: auto; padding: 12px; white-space: pre-wrap; }
+      .term .out .dim { color: var(--muted); }
+      .term form { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
+      .term input { flex: 1; background: none; border: 0; outline: none; color: var(--ink); font: inherit; caret-color: var(--accent); }
+
+      @media (max-width: 980px) {
+        .cards { grid-template-columns: 1fr 1fr 1fr; }
+        .feature, .split { grid-template-columns: 1fr; }
+        .split.flip > :first-child { order: 0; }
+      }
+      @media (max-width: 720px) {
+        .nav .hide-sm { display: none; }
+        .tag .code { display: none; }
+        .tag { font-size: 11px; gap: 10px; }
+        .stats { grid-template-columns: 1fr 1fr; }
+        .stat:nth-child(3) { padding-left: 0; border-left: 0; }
+        .stat:nth-child(n + 3) { border-top: 1px solid var(--line); }
+        .instruments, .fgrid { grid-template-columns: 1fr; }
+        .cards { grid-template-columns: 1fr; }
+        .card { min-height: 0; }
+        .row { grid-template-columns: 1fr; }
+        .row .n { padding: 0 0 6px; }
+        .shot, .split.flip .shot { transform: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .dot, .marquee div { animation: none; }
+        [data-reveal] { opacity: 1; transform: none; transition: none; }
+        .card, .shot, .tablet canvas { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap">
+        <a class="mark" href="/">R<span>D</span></a>
+        <nav class="nav mono">
+          <a href="/works.html">Work</a>
+          <a href="/lab.html" aria-current="page">Lab</a>
+          <a href="/resume.html" class="hide-sm">Résumé</a>
+          <a href="mailto:rohitdiggi@outlook.com">Contact ↗</a>
+          <button type="button" class="term-btn" data-term aria-label="Open the terminal">&gt;_</button>
+        </nav>
+      </div>
+      <div class="progress" id="progress"></div>
+    </header>
+
+    <main>
+      <section class="hero wrap">
+        <p class="kicker mono">/lab · research · builds · open source · wins</p>
+        <canvas class="dots" id="dots" role="img" aria-label="LAB, drawn in dots"></canvas>
+        <p class="lede">The work between the projects: routing research on a national testbed, an Android car app built from scratch, an extension people actually download, and the hackathons along the way.</p>
+        <p class="pulse mono"><span class="dot"></span><span data-live="pulse">building in public on GitHub</span></p>
+        <div class="stats">
+          <div class="stat"><b>13</b><span class="mono">node FABRIC experiment</span></div>
+          <div class="stat"><b>Top 8</b><span class="mono">of 15,000+ teams</span></div>
+          <div class="stat"><b>1st</b><span class="mono">prize · IEEE Smart City exhibition</span></div>
+          <div class="stat"><b data-live="downloads">200+</b><span class="mono">Claude Counter downloads</span></div>
+        </div>
+      </section>
+
+      <div class="marquee" aria-hidden="true"><div><span>Research</span><i>✦</i><span>Android</span><i>✦</i><span>Open source</span><i>✦</i><span>Hackathons</span><i>✦</i><span>Network security</span><i>✦</i><span>Edge AI</span><i>✦</i></div><div><span>Research</span><i>✦</i><span>Android</span><i>✦</i><span>Open source</span><i>✦</i><span>Hackathons</span><i>✦</i><span>Network security</span><i>✦</i><span>Edge AI</span><i>✦</i></div></div>
+
+      <!-- 01 research -->
+      <section class="block wrap" id="research">
+        <div class="tag mono" data-reveal><b>01</b>Research<span class="code"></span><span class="rule"></span>2 studies</div>
+        <h2 data-reveal>Networks that heal themselves, and traffic that gives itself away.</h2>
+        <div class="instruments">
+          <article class="instrument" data-reveal>
+            <canvas id="net" aria-label="A 13-node network. Click a link to cut it and watch traffic reroute."></canvas>
+            <p class="caption">Illustration · click a link to cut it</p>
+            <div class="txt">
+              <h3>EIBP: next-generation intra-AS routing</h3>
+              <p class="meta mono">Research Assistant · Rochester Institute of Technology · since Feb 2026</p>
+              <p class="body">A routing protocol built on MNLR, researched under Prof. Nirmala Shenoy. I deployed it on the FABRIC national research testbed and ran the first successful 13-node experiment, measuring convergence time, failure recovery and control overhead against OSPF.</p>
+              <div class="chips"><span>Routing protocols</span><span>MNLR</span><span>FABRIC testbed</span><span>OSPF</span></div>
+            </div>
+          </article>
+          <article class="instrument" data-reveal>
+            <canvas id="traffic" aria-label="Traffic volume and source entropy over time, with attack bursts flagged."></canvas>
+            <p class="caption">Illustration of the idea, not data from the paper</p>
+            <div class="txt">
+              <h3>Hybrid AI-powered real-time DDoS detection</h3>
+              <p class="meta mono">Paper · SWSIoT-2025, with Springer · Sep 2025</p>
+              <p class="body">Co-authored and presented a hybrid detection framework built during a cybersecurity internship at RV University: Random Forest and Isolation Forest models, entropy filtering and Bloom filters, with a live traffic-simulation dashboard.</p>
+              <div class="chips"><span>Machine learning</span><span>Network security</span><span>Dash / Plotly</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 02 featured build: DriveDash -->
+      <section class="block wrap" id="drivedash">
+        <div class="tag mono" data-reveal><b>02</b>Featured build<span class="code"></span><span class="rule"></span>Android · Kotlin</div>
+        <h2 data-reveal>A car dashboard, from the map up.</h2>
+        <div class="feature">
+          <div data-reveal>
+            <div class="tablet" id="tablet">
+              <canvas id="hud" aria-label="Illustration of DriveDash: a heading-up map following a route, with a missed turn and a reroute."></canvas>
+            </div>
+            <div class="tablet-bar">
+              <button type="button" class="toggle" id="hudToggle" aria-pressed="false"><i></i>Windshield HUD mode</button>
+              <span class="caption" style="margin:0">Illustration, not a screen recording</span>
+            </div>
+          </div>
+          <div data-reveal>
+            <div class="appid">
+              <img src="/lab/drivedash-icon.webp" alt="DriveDash app icon" width="64" height="64" />
+              <div><h3>DriveDash</h3><p class="mono" style="color:var(--muted);margin-top:6px">Navigation · Music · HUD · for Android tablets</p></div>
+            </div>
+            <p class="body">I wanted an always-on screen in the car that did the three things I actually use while driving, and did them well. So I built one from scratch in Kotlin and Jetpack Compose: turn-by-turn navigation with live traffic, Spotify on the same screen, and a HUD mode you can reflect onto the windshield at night.</p>
+            <div class="fgrid">
+              <div><h4>Navigation</h4><ul><li>Turn-by-turn on Google Routes API v2</li><li>Traffic-coloured route, green to red</li><li>Reroutes about 3 s after you leave the route</li><li>Driven road trims away behind the puck</li></ul></div>
+              <div><h4>Map &amp; camera</h4><ul><li>Heading-up camera that turns with you</li><li>Rate-limited bearing, no spinning on sharp turns</li><li>Zooms out on highways, in on local streets</li><li>Place search with autocomplete</li></ul></div>
+              <div><h4>HUD</h4><ul><li>Mirrors the map to reflect onto glass</li><li>Cyan on black for low-light driving</li><li>Full navigation puck in the HUD mini-map</li></ul></div>
+              <div><h4>Music &amp; GPS relay</h4><ul><li>Spotify art and controls, with a session watchdog</li><li>iPhone GPS relayed over Wi-Fi to a built-in HTTP server</li><li>Kalman filter to steady a noisy fix</li></ul></div>
+            </div>
+            <ol class="log">
+              <li><span><b>Faster rerouting.</b> Off-route triggers in 3 s instead of 5 s, and the puck lets go of the old route at once.</span></li>
+              <li><span><b>Path trimming.</b> Crossed segments disappear behind the puck in real time.</span></li>
+              <li><span><b>Camera stability.</b> Bearing smoothing with hysteresis ended the uncontrolled spinning.</span></li>
+              <li><span><b>Spotify reliability.</b> A watchdog and exponential backoff stopped sessions dropping after five or six songs.</span></li>
+            </ol>
+            <div class="ministats">
+              <div><b>v2.0</b><span>current release</span></div>
+              <div><b>33</b><span>Kotlin files</span></div>
+              <div><b>8.0+</b><span>Android, API 26</span></div>
+            </div>
+            <div class="cta"><a class="btn btn--solid" href="https://github.com/Rohx24/Drivedash" target="_blank" rel="noreferrer">Read the code ↗</a></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 03 open source -->
+      <section class="block wrap" id="open-source">
+        <div class="tag mono" data-reveal><b>03</b>Open source<span class="code"></span><span class="rule"></span>live from GitHub</div>
+        <div class="split">
+          <div data-reveal>
+            <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>claude.ai · with Claude Counter</span></div><img src="/previews/claude-counter.webp" alt="Claude Counter on claude.ai: token count, cache timer and usage bars" loading="lazy" /></div>
+          </div>
+          <div data-reveal>
+            <h2 style="font-size:clamp(1.8rem,4vw,3rem)">Claude Counter</h2>
+            <p class="meta mono">Fork maintainer · JavaScript · browser extension</p>
+            <p class="body">A browser extension that shows token count, cache timer and usage bars on claude.ai. I maintain a fork of <a href="https://github.com/she-llac/claude-counter" target="_blank" rel="noreferrer">she-llac/claude-counter</a> and ship its releases.</p>
+            <div class="count" style="margin-top:24px"><b data-live="downloads">200+</b><span class="mono"><span class="dot"></span>downloads of my releases · live</span></div>
+            <ul class="changes">
+              <li>Fixed the broken data bridge and a missing storage permission (v2.0.1)</li>
+              <li>Added a seconds countdown and restored the original icons (v2.0.2)</li>
+              <li>Fixed release packaging, and gave the fork its own Firefox add-on ID</li>
+            </ul>
+            <div class="cta"><a class="btn" href="https://github.com/Rohx24/claude-counter" target="_blank" rel="noreferrer">My fork ↗</a><a class="btn" href="https://github.com/she-llac/claude-counter" target="_blank" rel="noreferrer">Upstream ↗</a></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 04 collaboration -->
+      <section class="block wrap" id="collaboration">
+        <div class="tag mono" data-reveal><b>04</b>Collaboration<span class="code"></span><span class="rule"></span>React · Vite</div>
+        <div class="split flip">
+          <div data-reveal>
+            <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>rvu-placements-revamp.vercel.app</span></div><img src="/lab/rvu-placements.webp" alt="The revamped RV University placements site" loading="lazy" /></div>
+          </div>
+          <div data-reveal>
+            <h2 style="font-size:clamp(1.8rem,4vw,3rem)">RV University placements, rebuilt.</h2>
+            <p class="meta mono">Contributor · Sep 2026</p>
+            <p class="body">A React and Vite revamp of the university's placements site. I built the recruiter wall in RV colours with a list view and a first-look guide, the cohort chart and the placement-office video, merged the Students and Parents pages, reworked the home entrance and navigation, and made the site light by default with a working dark mode.</p>
+            <div class="cta"><a class="btn btn--solid" href="https://rvu-placements-revamp.vercel.app" target="_blank" rel="noreferrer">Live site ↗</a><a class="btn" href="https://github.com/BaconKage/rvu-placements-revamp" target="_blank" rel="noreferrer">Code ↗</a></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 05 wins -->
+      <section class="block wrap" id="wins">
+        <div class="tag mono" data-reveal><b>05</b>Wins<span class="code"></span><span class="rule"></span>hover a card</div>
+        <h2 data-reveal>Trophy cabinet.</h2>
+        <div class="cards">
+          <article class="card" data-reveal>
+            <div class="art"><img src="/previews/satark.webp" alt="Satark.ai" loading="lazy" /></div>
+            <div class="rank">Top 8<small>/ 15,000+</small></div>
+            <h3>India AI Impact Buildathon</h3>
+            <p>HCL GUVI · AI Impact Summit 2026 at Bharat Mandapam. Team N0Lock scored 88/100 with Satark.ai, an agentic honeypot API for real-time scam detection.</p>
+            <div class="foot"><span>National</span><span>2026</span></div>
+          </article>
+          <article class="card" data-reveal>
+            <div class="art"><svg viewBox="0 0 120 100" aria-hidden="true"><rect x="46" y="8" width="28" height="70" rx="8" fill="none" stroke="#ecece8" stroke-width="2"/><circle cx="60" cy="24" r="7" fill="#2a2a2e"/><circle cx="60" cy="43" r="7" fill="#2a2a2e"/><circle cx="60" cy="62" r="7" fill="#d4ff3f"/><line x1="60" y1="78" x2="60" y2="96" stroke="#ecece8" stroke-width="2"/><path d="M84 30 q10 13 0 26 M92 24 q16 19 0 38" fill="none" stroke="#ff5a4e" stroke-width="2"/><path d="M36 30 q-10 13 0 26 M28 24 q-16 19 0 38" fill="none" stroke="#4ee2ff" stroke-width="2"/></svg></div>
+            <div class="rank">1st<small>prize</small></div>
+            <h3>IEEE Smart City Project Exhibition</h3>
+            <p>Avishkar, ISTE &amp; IEEE, Vemana Institute of Technology. Won with Vimana ResQ, an emergency vehicle preemption system that clears traffic signals ahead of emergency vehicles.</p>
+            <div class="foot"><span>IEEE</span><span>Exhibition</span></div>
+          </article>
+          <article class="card" data-reveal>
+            <div class="art"><svg viewBox="0 0 120 100" aria-hidden="true"><g stroke="#3a3a3f" stroke-width="1.5" fill="none"><rect x="25" y="10" width="70" height="70"/><path d="M39 10v70M53 10v70M67 10v70M81 10v70M25 24h70M25 38h70M25 52h70M25 66h70"/></g><circle cx="46" cy="31" r="5" fill="#d4ff3f"/><circle cx="74" cy="59" r="5" fill="#ecece8"/><rect x="55" y="40" width="10" height="10" fill="#4ee2ff"/><circle cx="32" cy="73" r="5" fill="#ff5a4e"/></svg></div>
+            <div class="rank">Best<small>project</small></div>
+            <h3>Structured Innovation</h3>
+            <p>Conceived, designed and built an entirely new board game from scratch, original enough that it has been sent for patent filing.</p>
+            <div class="foot"><span>College</span><span>Patent filing</span></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 06 experiments -->
+      <section class="block wrap" id="experiments">
+        <div class="tag mono" data-reveal><b>06</b>Experiments<span class="code"></span><span class="rule"></span>small, sharp</div>
+        <div class="rows">
+          <article class="row" data-reveal>
+            <span class="n mono">E1</span>
+            <div><h3>Voice translation on the edge</h3><p class="meta mono">Edge AI · Raspberry Pi · on-device</p><p class="body">Voice translation that runs entirely on-device, on a Raspberry Pi.</p></div>
+            <div class="links mono"></div>
+          </article>
+          <article class="row" data-reveal>
+            <span class="n mono">E2</span>
+            <div><h3>Fine-tuning with QLoRA</h3><p class="meta mono">CS3235 · Working with LLMs</p><p class="body">Parameter-efficient fine-tuning of a language model using QLoRA.</p></div>
+            <div class="links mono"><a href="https://github.com/Rohx24/CS3235_Lab_PEFT_QLoRA" target="_blank" rel="noreferrer">Code ↗</a></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 07 now -->
+      <section class="block wrap now" id="now">
+        <div class="tag mono" data-reveal><b>07</b>Now<span class="code"></span><span class="rule"></span><span data-live="clock">Bengaluru</span></div>
+        <div data-reveal>
+          <p>Final-year <b>B.Tech (Hons.) CSE, AI/ML</b> at RV University, researching routing protocols at <b>RIT</b>, and open to <b>SDE and AI engineering</b> roles.</p>
+          <div class="cta">
+            <a class="btn btn--solid" href="mailto:rohitdiggi@outlook.com">Get in touch ↗</a>
+            <a class="btn" href="/resume.html">Résumé ↗</a>
+            <a class="btn" href="https://github.com/Rohx24" target="_blank" rel="noreferrer">GitHub ↗</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="wrap">
+      <div class="word" id="word" aria-label="Rohit Diggi"></div>
+      <div class="foot-row mono">
+        <a href="/">← Home</a>
+        <button type="button" data-term>psst · press <kbd>/</kbd> for a terminal</button>
+        <span>Lab · 2026 · Bengaluru, IN</span>
+      </div>
+    </footer>
+
+    <div class="ring" id="ring"></div>
+    <div class="readout" id="readout">x 0000 · y 0000</div>
+
+    <div class="term" id="term" role="dialog" aria-label="Terminal">
+      <header><span>rohit@lab: ~</span><button type="button" id="termClose" aria-label="Close terminal">esc ✕</button></header>
+      <div class="out" id="termOut"></div>
+      <form id="termForm"><span>&gt;</span><input id="termIn" autocomplete="off" spellcheck="false" aria-label="Command" /></form>
+    </div>
+
+    <script>
+      (() => {
+        const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches
+        const DPR = Math.min(devicePixelRatio || 1, 2)
+        const $ = (s) => document.querySelector(s)
+
+        /* ---- shared: size a canvas to its box, and run a loop only while it is on screen ---- */
+        function fit(c) {
+          const w = c.clientWidth, h = c.clientHeight
+          c.width = Math.max(1, Math.round(w * DPR)); c.height = Math.max(1, Math.round(h * DPR))
+          const x = c.getContext('2d'); x.setTransform(DPR, 0, 0, DPR, 0, 0)
+          return { x, w, h }
+        }
+        function runWhileVisible(el, frame) {
+          let raf = 0, on = false, last = performance.now()
+          const loop = (now) => { const dt = Math.min((now - last) / 1000, 0.1); last = now; frame(now / 1000, dt); if (on && !REDUCED) raf = requestAnimationFrame(loop) }
+          const start = () => { cancelAnimationFrame(raf); last = performance.now(); raf = requestAnimationFrame(loop) }
+          new IntersectionObserver(([e]) => { on = e.isIntersecting && !document.hidden; if (on) start(); else cancelAnimationFrame(raf) }).observe(el)
+          document.addEventListener('visibilitychange', () => { if (document.hidden) { on = false; cancelAnimationFrame(raf) } })
+          return { poke: () => { if (REDUCED) start() } }
+        }
+
+        /* ---- hero: LAB in dots, pushed around by the pointer ---- */
+        ;(async () => {
+          const c = $('#dots'); let g, cells = [], pitch = 10
+          const ptr = { x: -1e4, y: -1e4, t: 0 }
+          const build = async () => {
+            try { await document.fonts.load('700 100px "Space Grotesk"') } catch {}
+            g = fit(c); pitch = g.w < 600 ? 7 : 10
+            const off = document.createElement('canvas'); off.width = g.w; off.height = g.h
+            const o = off.getContext('2d')
+            let fs = g.h * 1.18
+            o.font = `700 ${fs}px "Space Grotesk", sans-serif`
+            const full = o.measureText('LAB.').width
+            if (full > g.w * 0.98) { fs *= (g.w * 0.98) / full; o.font = `700 ${fs}px "Space Grotesk", sans-serif` }
+            const labW = o.measureText('LAB').width
+            o.fillStyle = '#fff'; o.textBaseline = 'alphabetic'
+            const base = g.h * 0.5 + fs * 0.36
+            o.fillText('LAB.', -fs * 0.03, base)
+            const px = o.getImageData(0, 0, g.w, g.h).data
+            cells = []
+            for (let y = pitch / 2; y < g.h; y += pitch) for (let x = pitch / 2; x < g.w; x += pitch) {
+              const a = px[((y | 0) * g.w + (x | 0)) * 4 + 3]
+              cells.push({ x, y, on: a > 128, lime: a > 128 && x > labW - fs * 0.03 })
+            }
+            draw(performance.now() / 1000)
+          }
+          const draw = (t) => {
+            const { x: ctx, w, h } = g
+            ctx.clearRect(0, 0, w, h)
+            const R = 110, R2 = R * R
+            const paths = [new Path2D(), new Path2D(), new Path2D(), new Path2D()]
+            for (const d of cells) {
+              let x = d.x, y = d.y, k = 0
+              const dx = x - ptr.x, dy = y - ptr.y, d2 = dx * dx + dy * dy
+              if (d2 < R2) { const dd = Math.sqrt(d2) || 1; k = (1 - dd / R) ** 2; x += (dx / dd) * k * 22; y += (dy / dd) * k * 22 }
+              const breathe = d.on ? 0.25 * Math.sin(t * 1.6 - d.x * 0.012) : 0
+              const r = (d.on ? pitch * 0.34 : pitch * 0.12) * (1 + breathe + k * 0.9)
+              const p = d.lime ? paths[2] : d.on ? paths[1] : k > 0.05 ? paths[3] : paths[0]
+              p.moveTo(x + r, y); p.arc(x, y, r, 0, Math.PI * 2)
+            }
+            ctx.fillStyle = 'rgba(255,255,255,0.09)'; ctx.fill(paths[0])
+            ctx.fillStyle = 'rgba(212,255,63,0.55)'; ctx.fill(paths[3])
+            ctx.fillStyle = '#ecece8'; ctx.fill(paths[1])
+            ctx.fillStyle = '#d4ff3f'; ctx.fill(paths[2])
+          }
+          c.addEventListener('pointermove', (e) => { const r = c.getBoundingClientRect(); ptr.x = e.clientX - r.left; ptr.y = e.clientY - r.top; ptr.t = performance.now(); if (REDUCED) draw(0) })
+          c.addEventListener('pointerleave', () => { ptr.x = ptr.y = -1e4 })
+          await build()
+          let rs; new ResizeObserver(() => { clearTimeout(rs); rs = setTimeout(build, 120) }).observe(c)
+          runWhileVisible(c, (t) => { if (g) draw(t) })
+        })()
+
+        /* ---- research 1: a 13-node network that reroutes around cut links ---- */
+        ;(() => {
+          const c = $('#net'); let g
+          const N = [[.07,.5],[.2,.18],[.22,.8],[.36,.44],[.42,.12],[.44,.86],[.55,.6],[.6,.28],[.7,.84],[.74,.52],[.82,.16],[.9,.7],[.94,.36]]
+          const E = [[0,1],[0,2],[0,3],[1,3],[1,4],[2,3],[2,5],[3,6],[3,7],[4,7],[5,6],[5,8],[6,9],[7,9],[7,10],[8,9],[8,11],[9,11],[9,12],[10,12],[11,12],[6,8]]
+          const down = new Set(); let packets = [], spawn = 0, status = '', statusT = 0, userAt = -1e9, autoT = 0
+          const adj = () => { const a = N.map(() => []); E.forEach(([u, v], i) => { if (!down.has(i)) { a[u].push(v); a[v].push(u) } }); return a }
+          const route = (s, d) => { const a = adj(), prev = new Array(N.length).fill(-1), seen = new Set([s]), q = [s]
+            while (q.length) { const u = q.shift(); if (u === d) break; for (const v of a[u]) if (!seen.has(v)) { seen.add(v); prev[v] = u; q.push(v) } }
+            if (!seen.has(d)) return null; const p = [d]; while (p[0] !== s) p.unshift(prev[p[0]]); return p }
+          const P = (i) => [N[i][0] * g.w, 16 + N[i][1] * (g.h - 32)]
+          const toggle = (i, auto) => { if (down.has(i)) down.delete(i); else down.add(i); status = down.has(i) ? 'link down · rerouting' : 'link restored'; statusT = 1.6
+            packets.forEach((p) => { const r = route(p.path[p.i], p.dst); if (r) { p.path = r; p.i = 0; p.f = 0 } else p.dead = true })
+            if (!auto) userAt = performance.now() }
+          c.addEventListener('click', (e) => { const r = c.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top
+            let best = -1, bd = 14
+            E.forEach(([u, v], i) => { const [x1, y1] = P(u), [x2, y2] = P(v); const L = (x2 - x1) ** 2 + (y2 - y1) ** 2; let t = ((mx - x1) * (x2 - x1) + (my - y1) * (y2 - y1)) / L; t = Math.max(0, Math.min(1, t)); const d = Math.hypot(mx - (x1 + t * (x2 - x1)), my - (y1 + t * (y2 - y1))); if (d < bd) { bd = d; best = i } })
+            if (best >= 0) toggle(best, false) })
+          const frame = (t, dt) => {
+            if (!g) return; const ctx = g.x; ctx.clearRect(0, 0, g.w, g.h)
+            // left of the network sends to the right of it
+            if ((spawn -= dt) <= 0) { spawn = 0.35; const s = [0, 1, 2][(Math.random() * 3) | 0], d = [10, 11, 12][(Math.random() * 3) | 0]; const r = route(s, d); if (r) packets.push({ path: r, i: 0, f: 0, dst: d }) }
+            // when nobody is playing with it, it cuts and restores links by itself
+            if (performance.now() - userAt > 9000 && (autoT -= dt) <= 0) { autoT = 3.2; if (down.size >= 2 || (down.size && Math.random() < 0.5)) toggle([...down][0], true); else toggle((Math.random() * E.length) | 0, true) }
+            const hot = new Set()
+            packets = packets.filter((p) => !p.dead && p.i < p.path.length - 1)
+            packets.forEach((p) => { p.f += dt * 2.4; while (p.f >= 1 && p.i < p.path.length - 1) { p.f -= 1; p.i++ } for (let k = 0; k < p.path.length - 1; k++) { const a = p.path[k], b = p.path[k + 1]; hot.add(a < b ? a + '-' + b : b + '-' + a) } })
+            E.forEach(([u, v], i) => { const [x1, y1] = P(u), [x2, y2] = P(v); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2)
+              if (down.has(i)) { ctx.setLineDash([4, 5]); ctx.strokeStyle = 'rgba(255,90,78,0.8)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]); const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; ctx.strokeStyle = '#ff5a4e'; ctx.beginPath(); ctx.moveTo(mx - 5, my - 5); ctx.lineTo(mx + 5, my + 5); ctx.moveTo(mx + 5, my - 5); ctx.lineTo(mx - 5, my + 5); ctx.stroke() }
+              else { ctx.strokeStyle = hot.has(u < v ? u + '-' + v : v + '-' + u) ? 'rgba(212,255,63,0.35)' : 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1.5; ctx.stroke() } })
+            ctx.fillStyle = '#d4ff3f'
+            packets.forEach((p) => { const [x1, y1] = P(p.path[p.i]), [x2, y2] = P(p.path[Math.min(p.i + 1, p.path.length - 1)]); ctx.beginPath(); ctx.arc(x1 + (x2 - x1) * p.f, y1 + (y2 - y1) * p.f, 2.6, 0, Math.PI * 2); ctx.fill() })
+            N.forEach((_, i) => { const [x, y] = P(i); ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fillStyle = '#17171a'; ctx.fill(); ctx.strokeStyle = i < 3 || i > 9 ? '#d4ff3f' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5; ctx.stroke() })
+            ctx.font = '500 10px ui-monospace, Menlo, monospace'; ctx.fillStyle = '#8d8d87'
+            ctx.fillText(`13 NODES · ${E.length - down.size}/${E.length} LINKS UP`, 12, 18)
+            if (statusT > 0) { statusT -= dt; ctx.fillStyle = status.startsWith('link down') ? '#ff5a4e' : '#d4ff3f'; ctx.fillText(status.toUpperCase(), 12, 34) }
+          }
+          const size = () => { g = fit(c); frame(0, 0) }
+          size(); new ResizeObserver(size).observe(c); runWhileVisible(c, frame)
+        })()
+
+        /* ---- research 2: traffic volume vs source entropy, bursts flagged ---- */
+        ;(() => {
+          const c = $('#traffic'); let g, vol = [], ent = [], flag = [], acc = 0, attack = 0, next = 3, bursts = 0, inBurst = false
+          const noise = () => (Math.random() - 0.5)
+          const step = () => {
+            if (attack > 0) attack -= 0.05; else if ((next -= 0.05) <= 0) { attack = 2.2 + Math.random(); next = 4 + Math.random() * 4 }
+            const a = attack > 0
+            const v = a ? 0.78 + noise() * 0.14 : 0.24 + noise() * 0.08 + Math.sin(performance.now() / 900) * 0.04
+            const e = a ? 0.22 + noise() * 0.08 : 0.8 + noise() * 0.06
+            const f = v > 0.55 && e < 0.5
+            if (f && !inBurst) bursts++; inBurst = f
+            vol.push(v); ent.push(e); flag.push(f)
+            const n = Math.ceil(g.w / 3); while (vol.length > n) { vol.shift(); ent.shift(); flag.shift() }
+          }
+          const frame = (t, dt) => {
+            if (!g) return; acc += dt; while (acc > 0.05) { acc -= 0.05; step() }
+            const ctx = g.x, w = g.w, h = g.h, top = 34, bot = h - 16, Y = (v) => bot - v * (bot - top)
+            ctx.clearRect(0, 0, w, h)
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1
+            for (let i = 0; i <= 4; i++) { const y = top + (i * (bot - top)) / 4; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
+            const x0 = w - vol.length * 3
+            ctx.fillStyle = 'rgba(255,90,78,0.14)'
+            flag.forEach((f, i) => { if (f) ctx.fillRect(x0 + i * 3, top, 3, bot - top) })
+            const line = (arr, col, dash) => { ctx.beginPath(); arr.forEach((v, i) => { const x = x0 + i * 3; i ? ctx.lineTo(x, Y(v)) : ctx.moveTo(x, Y(v)) }); ctx.setLineDash(dash); ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]) }
+            line(ent, '#4ee2ff', [4, 3]); line(vol, '#d4ff3f', [])
+            ctx.font = '500 10px ui-monospace, Menlo, monospace'
+            ctx.fillStyle = '#d4ff3f'; ctx.fillText('■ VOLUME', 12, 18)
+            ctx.fillStyle = '#4ee2ff'; ctx.fillText('■ SOURCE ENTROPY', 90, 18)
+            ctx.fillStyle = '#ff5a4e'; ctx.fillText(`FLAGGED BURSTS ${String(bursts).padStart(2, '0')}`, w - 150, 18)
+          }
+          const size = () => { g = fit(c); if (!vol.length) for (let i = 0; i < Math.ceil(g.w / 3); i++) step(); frame(0, 0) }
+          size(); new ResizeObserver(size).observe(c); runWhileVisible(c, frame)
+        })()
+
+        /* ---- DriveDash: a heading-up map, a missed turn, a reroute ---- */
+        ;(() => {
+          const c = $('#hud'), tablet = $('#tablet'), btn = $('#hudToggle'); let g, hud = false
+          const S = 90, A = [[180, 1440], [180, 900], [720, 900], [720, 540], [1260, 540], [1260, 180], [1530, 180]]
+          const BRANCH = 3, B = [[720, 540], [720, 360], [1080, 360], [1080, 180], [1530, 180]]
+          const OFF = [[720, 540], [720, 360]]
+          const TRAFFIC = ['#2ecc71', '#f1c40f', '#e74c3c', '#2ecc71', '#f1c40f', '#2ecc71']
+          const lens = (p) => { const L = [0]; for (let i = 1; i < p.length; i++) L.push(L[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1])); return L }
+          const at = (p, L, d) => { d = Math.max(0, Math.min(d, L[L.length - 1])); let i = 1; while (i < L.length - 1 && L[i] < d) i++; const f = (d - L[i - 1]) / (L[i] - L[i - 1] || 1); return { x: p[i - 1][0] + (p[i][0] - p[i - 1][0]) * f, y: p[i - 1][1] + (p[i][1] - p[i - 1][1]) * f, i, th: Math.atan2(p[i][1] - p[i - 1][1], p[i][0] - p[i - 1][0]) } }
+          const LA = lens(A), LB = lens(B), LOFF = lens(OFF), branchD = LA[BRANCH]
+          let mode = 'A', d = 0, offT = 0, bear = -Math.PI / 2, zoom = 0.62, banner = '', bannerT = 0, fade = 1
+          const drawPath = (ctx, p, from, alpha, colours) => { const L = lens(p); ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+            for (let i = 1; i < p.length; i++) { if (L[i] <= from) continue; const s = L[i - 1] < from ? at(p, L, from) : { x: p[i - 1][0], y: p[i - 1][1] }
+              ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(p[i][0], p[i][1]); ctx.globalAlpha = alpha; ctx.strokeStyle = hud ? '#4ee2ff' : colours[(i - 1) % colours.length]; ctx.lineWidth = 16; ctx.stroke() }
+            ctx.globalAlpha = 1 }
+          const frame = (t, dt) => {
+            if (!g) return; const ctx = g.x, w = g.w, h = g.h
+            const speed = 150
+            let pos
+            if (mode === 'A') { d += speed * dt; if (d >= branchD) { mode = 'OFF'; offT = 0; d = 0 } pos = mode === 'A' ? at(A, LA, d) : at(OFF, LOFF, 0) }
+            else if (mode === 'OFF') { offT += dt; d += speed * dt; pos = at(OFF, LOFF, d); if (offT > 0.7 && !banner) { banner = 'Rerouting…'; bannerT = 1.4 } if (offT > 1.6) { mode = 'B'; banner = 'New route'; bannerT = 1.2 } }
+            else { d += speed * dt; pos = at(B, LB, d); if (d >= LB[LB.length - 1]) { fade -= dt * 1.5; if (fade <= 0) { mode = 'A'; d = 0; fade = 1; banner = '' } } }
+            if (mode !== 'B' && fade < 1) fade = Math.min(1, fade + dt * 2)
+            // rate-limited bearing, like the app's camera
+            let target = pos.th, diff = Math.atan2(Math.sin(target - bear), Math.cos(target - bear)); const maxTurn = 3.6 * dt; bear += Math.max(-maxTurn, Math.min(maxTurn, diff))
+            // zoom out on the long straights, in for the short streets
+            const segLen = mode === 'B' ? LB[pos.i] - LB[pos.i - 1] : LA[pos.i] - LA[pos.i - 1] || 360
+            zoom += ((segLen > 500 ? 0.5 : 0.7) * Math.min(w / 640, 1.25) - zoom) * Math.min(1, dt * 1.5)
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, w, h)
+            ctx.fillStyle = hud ? '#000' : '#06090d'; ctx.fillRect(0, 0, w, h)
+            ctx.save(); ctx.globalAlpha = fade
+            ctx.translate(w / 2, h * 0.7); ctx.rotate(-Math.PI / 2 - bear); ctx.scale(zoom, zoom); ctx.translate(-pos.x, -pos.y)
+            // the street grid
+            ctx.strokeStyle = hud ? 'rgba(78,226,255,0.14)' : 'rgba(255,255,255,0.07)'; ctx.lineWidth = 10
+            ctx.beginPath(); for (let k = -10; k <= 28; k++) { ctx.moveTo(k * S, -900); ctx.lineTo(k * S, 2520); ctx.moveTo(-900, k * S); ctx.lineTo(2520, k * S) } ctx.stroke()
+            // routes: driven road is trimmed; after the missed turn the old remainder dims
+            if (mode === 'A') drawPath(ctx, A, d, 1, TRAFFIC)
+            if (mode === 'OFF') { drawPath(ctx, A, branchD, 0.25, TRAFFIC) }
+            if (mode === 'B') drawPath(ctx, B, d, 1, TRAFFIC.slice(2))
+            // destination
+            const dest = A[A.length - 1]; ctx.fillStyle = hud ? '#4ee2ff' : '#d4ff3f'; ctx.beginPath(); ctx.arc(dest[0], dest[1], 16, 0, Math.PI * 2); ctx.fill()
+            ctx.restore()
+            // the puck
+            ctx.save(); ctx.translate(w / 2, h * 0.7)
+            ctx.shadowColor = '#4ee2ff'; ctx.shadowBlur = 18; ctx.fillStyle = '#4ee2ff'
+            ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(11, 12); ctx.lineTo(0, 6); ctx.lineTo(-11, 12); ctx.closePath(); ctx.fill(); ctx.restore()
+            // next manoeuvre
+            const path = mode === 'B' ? B : A, i = pos.i
+            let turn = 'Continue', arrow = '↑'
+            if (mode === 'OFF') { turn = 'Off route'; arrow = '⟲' }
+            else if (i < path.length - 1) { const ax = path[i][0] - path[i - 1][0], ay = path[i][1] - path[i - 1][1], bx = path[i + 1][0] - path[i][0], by = path[i + 1][1] - path[i][1]; const cr = ax * by - ay * bx; if (cr > 0) { turn = 'Turn right'; arrow = '↱' } else if (cr < 0) { turn = 'Turn left'; arrow = '↰' } }
+            else { turn = 'Arriving'; arrow = '◎' }
+            ctx.fillStyle = hud ? 'rgba(0,0,0,0.75)' : 'rgba(18,18,22,0.9)'; ctx.strokeStyle = hud ? 'rgba(78,226,255,0.5)' : 'rgba(255,255,255,0.12)'
+            ctx.beginPath(); ctx.roundRect(14, 14, 168, 52, 12); ctx.fill(); ctx.stroke()
+            ctx.fillStyle = hud ? '#4ee2ff' : '#ecece8'; ctx.font = '700 26px "Space Grotesk", sans-serif'; ctx.fillText(arrow, 26, 50)
+            ctx.font = '600 15px "Space Grotesk", sans-serif'; ctx.fillText(turn, 62, 46)
+            if (bannerT > 0) { bannerT -= dt; ctx.globalAlpha = Math.min(1, bannerT * 3); ctx.fillStyle = banner === 'New route' ? '#2ecc71' : '#f1c40f'; ctx.font = '600 13px ui-monospace, Menlo, monospace'; const tw = ctx.measureText(banner.toUpperCase()).width; ctx.beginPath(); ctx.roundRect(w / 2 - tw / 2 - 14, 18, tw + 28, 30, 15); ctx.fill(); ctx.fillStyle = '#0b0b0c'; ctx.fillText(banner.toUpperCase(), w / 2 - tw / 2, 38); ctx.globalAlpha = 1 }
+            else banner = mode === 'OFF' ? banner : ''
+            // music strip
+            ctx.fillStyle = hud ? 'rgba(0,0,0,0.75)' : 'rgba(18,18,22,0.9)'; ctx.beginPath(); ctx.roundRect(14, h - 50, w - 28, 36, 10); ctx.fill()
+            ctx.fillStyle = '#1db954'; ctx.beginPath(); ctx.arc(34, h - 32, 8, 0, Math.PI * 2); ctx.fill()
+            ctx.fillStyle = hud ? '#4ee2ff' : '#b9b9b3'; ctx.font = '500 11px ui-monospace, Menlo, monospace'; ctx.fillText('SPOTIFY', 50, h - 28); ctx.fillText('⏮  ⏸  ⏭', w - 92, h - 28)
+          }
+          btn.addEventListener('click', () => { hud = !hud; btn.setAttribute('aria-pressed', String(hud)); tablet.toggleAttribute('data-hud', hud); frame(0, 0) })
+          const size = () => { g = fit(c); frame(0, 0) }
+          size(); new ResizeObserver(size).observe(c); runWhileVisible(c, frame)
+        })()
+
+        /* ---- holographic cards ---- */
+        if (matchMedia('(pointer: fine)').matches && !REDUCED) document.querySelectorAll('.card').forEach((card) => {
+          card.addEventListener('pointermove', (e) => { const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height
+            card.classList.add('live'); card.style.setProperty('--mx', x * 100 + '%'); card.style.setProperty('--my', y * 100 + '%'); card.style.setProperty('--ry', (x - 0.5) * 16 + 'deg'); card.style.setProperty('--rx', (0.5 - y) * 12 + 'deg') })
+          card.addEventListener('pointerleave', () => { card.classList.remove('live'); card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg') })
+        })
+
+        /* ---- footer word: each letter lights up under the pointer ---- */
+        $('#word').innerHTML = [...'ROHIT DIGGI'].map((ch) => ch === ' ' ? '<span>&nbsp;</span>' : `<span aria-hidden="true">${ch}</span>`).join('')
+
+        /* ---- reveal, progress, cursor ---- */
+        const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) } }), { threshold: 0.12 })
+        document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el))
+        const bar = $('#progress'); let ticking = false
+        addEventListener('scroll', () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { const m = document.documentElement.scrollHeight - innerHeight; bar.style.transform = `scaleX(${m > 0 ? scrollY / m : 0})`; ticking = false }) }, { passive: true })
+        if (matchMedia('(pointer: fine)').matches && !REDUCED) {
+          const ring = $('#ring'), ro = $('#readout'); let tx = 0, ty = 0, x = 0, y = 0, raf = 0
+          const follow = () => { x += (tx - x) * 0.22; y += (ty - y) * 0.22; ring.style.transform = `translate(${x}px, ${y}px)`; raf = Math.abs(tx - x) + Math.abs(ty - y) > 0.3 ? requestAnimationFrame(follow) : 0 }
+          addEventListener('pointermove', (e) => { document.body.classList.add('pointer'); tx = e.clientX; ty = e.clientY; ro.textContent = `x ${String(Math.round(tx)).padStart(4, '0')} · y ${String(Math.round(ty + scrollY)).padStart(4, '0')}`; if (!raf) raf = requestAnimationFrame(follow)
+            ring.classList.toggle('big', !!e.target.closest('a, button, canvas, .card')) }, { passive: true })
+          document.addEventListener('pointerleave', () => document.body.classList.remove('pointer'))
+        }
+
+        /* ---- live figures from GitHub (CORS-open, cached 30 min) ---- */
+        const TTL = 30 * 60 * 1000
+        const get = async (url) => { const key = 'lab:' + url
+          try { const h = JSON.parse(sessionStorage.getItem(key) || 'null'); if (h && Date.now() - h.t < TTL) return h.v } catch {}
+          const r = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } }); if (!r.ok) throw new Error(String(r.status)); const v = await r.json()
+          try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v })) } catch {}; return v }
+        const set = (k, text) => document.querySelectorAll(`[data-live="${k}"]`).forEach((el) => { el.textContent = text })
+        const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000; return s < 3600 ? Math.max(1, Math.round(s / 60)) + 'm ago' : s < 86400 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago' }
+        const live = { downloads: null, push: null, repos: null }
+        get('https://api.github.com/repos/Rohx24/claude-counter/releases?per_page=100').then((rs) => { live.downloads = rs.reduce((n, r) => n + (r.assets || []).reduce((m, a) => m + (a.download_count || 0), 0), 0); set('downloads', live.downloads.toLocaleString()) }).catch(() => {})
+        Promise.all([get('https://api.github.com/users/Rohx24'), get('https://api.github.com/users/Rohx24/repos?sort=pushed&per_page=1')]).then(([u, rs]) => { if (!rs[0]) return; live.push = ago(rs[0].pushed_at); live.repos = u.public_repos; set('pulse', `last push ${live.push} · ${live.repos} public repos`) }).catch(() => {})
+        const clock = () => set('clock', new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date()) + ' in Bengaluru')
+        clock(); setInterval(clock, 30000)
+
+        /* ---- the terminal ---- */
+        const term = $('#term'), out = $('#termOut'), inp = $('#termIn')
+        const SECTIONS = ['research', 'drivedash', 'open-source', 'collaboration', 'wins', 'experiments', 'now']
+        const print = (s, cls) => { const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = s; out.appendChild(d); out.scrollTop = out.scrollHeight }
+        const open = () => { if (!term.hasAttribute('open')) { term.setAttribute('open', ''); if (!out.childElementCount) { print('rohit@lab · type help', 'dim') } } inp.focus() }
+        const close = () => { term.removeAttribute('open') }
+        const cmds = {
+          help: () => print('whoami  ls  cd <section>  stats  contact  mail  resume  github  clear  exit'),
+          whoami: () => print('Rohit Diggi\nB.Tech (Hons.) CSE, AI/ML · RV University\nResearch Assistant · Rochester Institute of Technology\nBengaluru, IN'),
+          ls: () => print(SECTIONS.map((s) => s + '/').join('  ')),
+          cd: (a) => { const s = SECTIONS.find((x) => x.startsWith((a || '').replace(/\/$/, ''))); if (!a || !s) return print('cd: no such section. try ls'); close(); document.getElementById(s).scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' }) },
+          stats: () => print(`claude counter downloads  ${live.downloads ?? '200+'}\nlast push to github       ${live.push ?? 'unknown'}\npublic repos              ${live.repos ?? 'unknown'}`),
+          contact: () => print('rohitdiggi@outlook.com\ntype mail to open your mail app'),
+          mail: () => { print('opening your mail app…'); location.href = 'mailto:rohitdiggi@outlook.com' },
+          resume: () => { location.href = '/resume.html' },
+          github: () => { open_('https://github.com/Rohx24') },
+          clear: () => { out.textContent = '' },
+          exit: close,
+          sudo: (a, all) => { if (/hire/.test(all)) { print('permission granted. opening mail…'); location.href = 'mailto:rohitdiggi@outlook.com?subject=' + encodeURIComponent("Let's talk") } else print('nice try.') },
+        }
+        const open_ = (u) => window.open(u, '_blank', 'noopener')
+        cmds.open = cmds.cd
+        $('#termForm').addEventListener('submit', (e) => { e.preventDefault(); const line = inp.value.trim(); inp.value = ''; if (!line) return; print('> ' + line, 'dim'); const [c, ...rest] = line.split(/\s+/); const f = cmds[c.toLowerCase()]; f ? f(rest[0], line) : print(`${c}: command not found. try help`) })
+        document.querySelectorAll('[data-term]').forEach((b) => b.addEventListener('click', open))
+        $('#termClose').addEventListener('click', close)
+        addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') return close()
+          if ((e.key === '/' || e.key === '`') && !e.target.closest('input, textarea')) { e.preventDefault(); open() }
+        })
+        console.log('%c LAB. %c press / anywhere on the page for a terminal', 'background:#d4ff3f;color:#0b0b0c;font-weight:700;padding:2px 6px', 'color:#8d8d87')
+      })()
+    </script>
+  </body>
+</html>
