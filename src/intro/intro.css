@@ -748,6 +748,34 @@
 }
 
 /* ------------------------------------------------------------------ *
+ * The dive: the plate pushes in on the screen (origin set from JS) while a
+ * black veil comes down, so the reveal can open the page out of black.
+ * ------------------------------------------------------------------ */
+.intro-root.diving .intro-stage {
+  scale: var(--dive-scale, 3.6);
+  transition: scale var(--dive-ms, 900ms) cubic-bezier(0.55, 0, 0.85, 0.35);
+  pointer-events: none;
+}
+.intro-root.diving .intro-left,
+.intro-root.diving .intro-corner { opacity: 0; pointer-events: none; }
+.intro-root.diving::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  pointer-events: none;
+  animation: diveVeil var(--dive-ms, 900ms) ease-in forwards;
+}
+@keyframes diveVeil {
+  0%, 35% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-root.diving .intro-stage { scale: 1; transition: none; }
+}
+
+/* ------------------------------------------------------------------ *
  * Sign-off. The spherical warp in crtScene does the actual reveal — it
  * blows the frame out as the zoom drives through — so all that is left
  * here is to take the spent canvas off the hero underneath. A collapse

@@ -1,5 +1,5 @@
 import './intro.css'
-import { createCrtScene, type CrtHandle, type ScreenLine } from './crtScene'
+import { createCrtScene, type CrtHandle } from './crtScene'
 import {
   QUALITY,
   TIER_STORAGE_KEY,
@@ -20,14 +20,8 @@ export const REVEAL = {
   zoom: 1.6,
 }
 
-/** Copy shown on the tube while it hunts for the channel. No glitch beats and
-    no "SYSTEM ONLINE" — the tube just searches, then locks on. */
-const HUNT: ScreenLine[][] = [
-  [{ t: 'FINDING CHANNEL', s: 34, c: '#5fdcff', gap: 0 }],
-  [{ t: 'FINDING CHANNEL .', s: 34, c: '#7ce4ff', gap: 0 }],
-  [{ t: 'FINDING CHANNEL . .', s: 34, c: '#a58cff', gap: 0 }],
-  [{ t: 'CHANNEL LOCKED', s: 36, c: '#ffb545', b: true, gap: 0 }],
-]
+/** The push into the screen after the blow-out, and the black it ends on. */
+const DIVE = { ms: 900, scale: 3.6 }
 
 
 /**
@@ -246,29 +240,8 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     if (entering) return
     entering = true
 
-    /* 1. Cut to the tube's picture, full screen.
-
-       There is no camera move here on purpose. Flying a camera at the set meant
-       the tube rotated, sheared and changed size on the way in, and every one of
-       those was something that could look wrong — and did. Switching to the
-       projection is what a television actually does: the picture is simply what
-       you are looking at now. No geometry, so nothing to distort.
-
-       The element still has to take the viewport (it normally lives in a 31%
-       box on the plate). Reparenting keeps the WebGL context — only recreating
-       the canvas would lose it. */
-    const set = root.querySelector('.intro-set') as HTMLElement
-
-    /* Start pulling the site down now. It is only the fetch and parse — nothing
-       mounts yet — so the heavy work is done by the time the transmission ends
-       and the reveal can show a page that is actually ready. The tube's model
-       is the hero's own file, so this warms it for the page too. */
-    // The page is already mounted and running underneath — see main.tsx. There
-    // is nothing to fetch here any more.
-
-    /* The channel change: the tube pulses five times, the gaps closing and each
-       pulse brighter than the last, until it blows out — and the blow-out
-       settles down into the full-screen picture rather than cutting to it.
+    /* 1. The channel change: the tube pulses five times in its own room, the
+       gaps closing and each pulse brighter than the last, until it blows out.
        Driven off one clock rather than chained timers so the envelope stays
        exact even if a frame is late. */
     crt.setEnter(0.5)
@@ -276,8 +249,8 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
     const ONSETS = [0, 460, 830, 1130, 1370] // gaps closing: 460/370/300/240
     const PEAKS = [0.35, 0.5, 0.7, 0.95, 1.4] // and brighter each time
     const PULSE = 260 // each blink swells and falls rather than snapping
-    const CUT = 1720 // the blow-out, and the moment the picture takes over
-    const SETTLE = 1150 // how long that blow-out takes to calm into the picture
+    const CUT = 1720 // the blow-out, and the moment the dive starts
+    const SETTLE = 1150 // how long that blow-out takes to calm
 
     const t0 = performance.now()
     let cut = false
@@ -291,7 +264,7 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
         if (d >= 0 && d < PULSE) v = Math.max(v, PEAKS[i] * Math.sin((Math.PI * d) / PULSE))
       }
       if (e >= CUT) {
-        if (!cut) { cut = true; takeOver() }
+        if (!cut) { cut = true; dive() }
         const s = Math.min(1, (e - CUT) / SETTLE)
         v = Math.max(v, 2.3 * (1 - s) * (1 - s)) // eases out, so it settles
       }
@@ -300,74 +273,41 @@ export function startIntro (opts: { onEnter: (target: string) => void }) {
       else crt.setFlash(0)
     }
     requestAnimationFrame(drive)
-
-    /* The set only takes the viewport HERE, not at the start. Going full-frame
-       up front let the automatic framing refit to the bigger canvas, which
-       hauled the tube right up to the camera before it had even blinked — it
-       should blink where it stands, in its own room, and only then become the
-       screen. */
-    /* The picture takes the screen — and from here it IS the live hero, seen
-       through the tube. The canvas paints only the television's own artefacts
-       and the page runs underneath it. */
-    function takeOver () {
-      root.appendChild(set)
-      root.classList.add('flying', 'hero-live')
-      crt.setProjection(true)
-      crt.setOverlay(true)
-      crt.setEnter(0.3)
-      root.classList.remove('switching')
-      window.setTimeout(transmission, 620)
-    }
     // rAF is suspended while the tab is hidden; timers are not
-    window.setTimeout(() => { if (!cut) { cut = true; crt.setFlash(0); takeOver() } }, CUT + 250)
+    window.setTimeout(() => { if (!cut) { cut = true; crt.setFlash(0); dive() } }, CUT + 250)
 
-    /* 3. The tube hunts for a channel, then locks onto the model: the snow
-       peaks, the copy dies, and the RD letter simply arrives in the middle of
-       the picture with the interference still boiling behind it. */
-    let started = false
-    function transmission () {
-      if (started) return
-      started = true
-      let i = 0
-      const hunt = () => {
-        // interference climbs with every failed attempt, but stops short of
-        // the point where the copy stops being readable
-        crt.setEnter(0.3 + i * 0.09)
-        crt.setChaos(0.22 + i * 0.16)
-        crt.setScreenText(HUNT[i])
-        i += 1
-        if (i < HUNT.length) { window.setTimeout(hunt, 420); return }
-        window.setTimeout(lock, 420)
-      }
-      hunt()
+    /* 2. The dive. On the blow-out the room pushes in on the glowing screen and
+       goes to black, and the page's own reveal opens the hero out of that black.
+
+       This replaced a full-screen "finding channel" hunt: the hero seen through
+       the tube's lamp lattice, RGB-split copy and tearing, for about three
+       seconds before anything happened. A push is uniform scale on a flat
+       plate, so unlike the old camera flight there is nothing in it to shear.
+       The origin is the screen's centre, so the screen is what grows toward
+       you. `scale` composes with the plate's centring transform and its
+       tracking-error `translate`, and touches neither. */
+    function dive () {
+      const stage = root.querySelector('.intro-stage') as HTMLElement
+      const screen = root.querySelector('.intro-crt') as HTMLElement
+      const r = screen.getBoundingClientRect()
+      const box = root.getBoundingClientRect()
+      // the scale origin, in the plate's own (untransformed) layout box
+      const ox = r.left + r.width / 2 - box.left - stage.offsetLeft
+      const oy = r.top + r.height / 2 - box.top - stage.offsetTop
+      stage.style.transformOrigin = `${ox}px ${oy}px`
+      // on the root, so the black veil (the root's ::after) reads them too
+      root.style.setProperty('--dive-scale', String(DIVE.scale))
+      root.style.setProperty('--dive-ms', `${DIVE.ms}ms`)
+      root.classList.remove('switching')
+      root.classList.add('diving')
+      window.setTimeout(handoff, DIVE.ms)
     }
 
-    /** The lock-on: chaos snaps off, the model fades up on the glass. */
-    /** The lock: the interference clears off the picture underneath. */
-    function lock () {
-      crt.setScreenText([])
-      const t1 = performance.now()
-      const DUR = 700
-      const settle = () => {
-        const p = Math.min(1, (performance.now() - t1) / DUR)
-        crt.setChaos(1.0 - p)
-        crt.setEnter(0.9 * (1 - p))
-        if (p < 1) requestAnimationFrame(settle)
-      }
-      requestAnimationFrame(settle)
-      window.setTimeout(handoff, DUR + 900)
-    }
-
-    /* 4. The hand-off. The site mounts behind the still-lit tube, then the tube
-       switches off the way a CRT actually does — the picture collapses to a
-       bright horizontal line, the line snaps to a point — and the hero is simply
-       already there behind it. Much better than fading through black, and it
-       ends the intro on the same piece of hardware it started on. */
-    /* 4. Hand over. The reveal itself is NOT here — it belongs to the page's
-       own composite, the way Alche's does, and lives in systems/IntroReveal.
-       All this does is let go: tell the app the title screen is done (which
-       starts that front and lifts the hero off its intro resolution) and take
-       this layer off the screen. */
+    /* 3. Hand over, in the black the dive ends on. The reveal itself belongs to
+       the page's own composite, the way Alche's does (systems/IntroReveal), and
+       its "before" is black too, so the seam cannot show. All this does is let
+       go: tell the app the title screen is done, which starts that front and
+       lifts the hero off its intro resolution, and take this layer away. */
     function handoff () {
       // hand the page back at the top, wherever the visitor's wheel had gone
       window.scrollTo(0, 0)
