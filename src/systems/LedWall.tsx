@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import {
   BackSide,
   CanvasTexture,
@@ -307,6 +307,28 @@ export function LedWall() {
   )
   // A black fallback for the incoming slot when there is no next project.
   const blankBlur = useMemo(() => buildBlurredProject(''), [])
+
+  /* Send the slides to the GPU at load, not on the frame that first asks for
+     them. A CanvasTexture is uploaded on first use, and first use is the scroll
+     into the works section: measured, two uploads landed inside that move. The
+     images arrive asynchronously, so this waits for each one and uploads it the
+     frame after it lands, where nothing else is happening. */
+  const uploader = useThree((state) => state.gl)
+  useEffect(() => {
+    const waiting = [blankBlur, ...blurred]
+    let raf = 0
+    const pump = () => {
+      for (let i = waiting.length - 1; i >= 0; i--) {
+        const slide = waiting[i]
+        if (slide !== blankBlur && slide.loaded.value !== 1) continue
+        uploader.initTexture(slide.texture)
+        waiting.splice(i, 1)
+      }
+      if (waiting.length > 0) raf = requestAnimationFrame(pump)
+    }
+    raf = requestAnimationFrame(pump)
+    return () => cancelAnimationFrame(raf)
+  }, [uploader, blurred, blankBlur])
 
   // Each project's accent in linear space, so the wall can glow in the work's own
   // colour even when its screenshot is near-black (Satark, Parallel, Boardroom).
