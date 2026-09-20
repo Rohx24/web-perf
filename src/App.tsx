@@ -18,6 +18,10 @@ import { HeroSystem } from './systems/HeroSystem'
 import { IntroReveal } from './systems/IntroReveal'
 import { LedWall } from './systems/LedWall'
 import { TypographySystem } from './systems/TypographySystem'
+
+const TYPOGRAPHY_ON =
+  typeof window === 'undefined' ||
+  new URLSearchParams(window.location.search).get('type') !== '0'
 import { Wordmark } from './systems/Wordmark'
 import { OutroWireframe } from './scroll/OutroWireframe'
 import { ProjectFrames } from './scroll/ProjectFrames'
@@ -96,7 +100,10 @@ export default function App() {
           project image echo is projected through these dots inside the shader. */}
       <LedWall />
       <PanelLayer />
-      <TypographySystem />
+      {/* ?type=0 leaves the drifting words out. Each word is a React remount and
+          a fresh text mesh when it spawns, so this is the A/B for whether those
+          spawns are what a visitor feels as periodic hitching. */}
+      {TYPOGRAPHY_ON && <TypographySystem />}
       <GridLayer />
       <MarkerLayer />
       {/* The sheet over the display. Everything above is seen through it. */}
