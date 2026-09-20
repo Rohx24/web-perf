@@ -53,6 +53,12 @@ const SETTLE_MS = 3500
  * and it would land in the middle of the move that provoked it.
  */
 const STILL_ENOUGH = 0.012
+/**
+ * ...and it has to have been still for this long. Applying the step the instant
+ * the scroll stops just moves the stall to the end of the gesture, where it is
+ * still the thing the visitor was doing; a beat later nobody is waiting on it.
+ */
+const STILL_MS = 700
 
 export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => number) => void }) {
   const gl = useThree((s) => s.gl)
@@ -90,8 +96,12 @@ export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => numbe
   const stepRef = useRef((_dir: number) => {})
   useEffect(() => {
     let raf = 0
+    let stillSince = 0
     const loop = () => {
-      if (pending.current !== 0 && scrollVelocity() < STILL_ENOUGH) {
+      const now = performance.now()
+      if (scrollVelocity() >= STILL_ENOUGH) stillSince = 0
+      else if (stillSince === 0) stillSince = now
+      if (pending.current !== 0 && stillSince > 0 && now - stillSince > STILL_MS) {
         const dir = pending.current
         pending.current = 0
         stepRef.current(dir)
@@ -126,11 +136,9 @@ export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => numbe
   /** Take the step now if the view is still; otherwise hold it until it is. */
   const request = (dir: number) => {
     if (!armed.current) return
-    if (scrollVelocity() >= STILL_ENOUGH) {
-      pending.current = dir
-      return
-    }
-    step(dir)
+    // Always through the queue: the loop decides when the view has been still
+    // long enough to afford the reallocation.
+    pending.current = dir
   }
 
   return (

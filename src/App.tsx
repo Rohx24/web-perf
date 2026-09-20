@@ -6,6 +6,7 @@ import { AdaptiveQuality } from './perf/AdaptiveQuality'
 import { INTRO_DPR, onRevealDone, revealDone } from './perf/introState'
 import { onSceneCovered } from './perf/sceneCover'
 import { StatsProbe } from './perf/Stats'
+import { WarmDraw } from './perf/WarmDraw'
 import { GridLayer } from './scene/GridLayer'
 import { MarkerLayer } from './scene/MarkerLayer'
 import { PanelLayer } from './scene/PanelLayer'
@@ -117,6 +118,9 @@ export default function App() {
           stall on a weak phone GPU ("first launch incredibly laggy") — there we
           let shaders compile lazily so the hero paints fast. */}
       {!IS_MOBILE && <Preload all />}
+      {/* ...and draw every object once, so the buffers are on the GPU before the
+          first scroll asks for them. See perf/WarmDraw. */}
+      {!IS_MOBILE && <WarmDraw />}
       {/* FPS / draw-call HUD, only when ?stats=1. Costs nothing otherwise. */}
       {QUALITY.showStats && <StatsProbe />}
     </Canvas>

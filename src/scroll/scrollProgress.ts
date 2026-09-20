@@ -77,6 +77,8 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   }
   // Read the eased progress the scene actually uses, for calibrating beats.
   ;(window as unknown as { __p: () => number }).__p = () => state.progress
+  // ...and the smoothed speed, for checking what is allowed to run mid-scroll.
+  ;(window as unknown as { __vel: () => number }).__vel = () => state.velocity
 }
 
 /**
