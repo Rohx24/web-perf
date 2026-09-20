@@ -225,8 +225,3 @@ addEventListener('pageshow', (e) => {
   document.querySelectorAll('.rd-ch-veil, .rd-ch-line, .rd-ch-osd').forEach((el) => el.remove())
 })
 
-// ?chdbg=1 exposes both halves, so the effect can be driven (and slowed with
-// document.getAnimations()) without waiting on a real navigation.
-if (new URLSearchParams(location.search).get('chdbg') === '1') {
-  window.__channel = { switchOff, tuneIn }
-}

@@ -6,12 +6,6 @@ import { applyVibrance, readVibrance } from './perf/quality'
 // the viewer's saturation preference, before anything paints
 applyVibrance(readVibrance())
 
-/* ?spikes=1 lists the slow frames on screen (perf/spikeLog): a stutter is easy
-   to feel and hard to describe, and this says how long and where. */
-if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('spikes') === '1') {
-  import('./perf/spikeLog').then((m) => m.attachSpikeLog())
-}
-
 const root = document.getElementById('root')!
 
 /* The title screen plays once per visit. After ENTER, coming back to the home
