@@ -4,6 +4,7 @@ import { PerformanceMonitor } from '@react-three/drei'
 import { onRevealDone } from './introState'
 
 import { QUALITY } from './quality'
+import { scrollVelocity } from '../scroll/scrollProgress'
 
 /**
  * Runtime adaptive quality.
@@ -46,6 +47,13 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 /** How long after the page is handed over before quality may be changed. */
 const SETTLE_MS = 3500
 
+/**
+ * Below this scroll speed (progress-units per second) the view counts as still.
+ * Nothing is reallocated above it: the reallocation is the stutter people feel,
+ * and it would land in the middle of the move that provoked it.
+ */
+const STILL_ENOUGH = 0.012
+
 export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => number) => void }) {
   const gl = useThree((s) => s.gl)
   const trans = useRef(QUALITY.transmissionScale)
@@ -69,6 +77,30 @@ export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => numbe
      good once it fires. One bad handful of frames at load pinned the site to
      the floor for the whole session. */
   const armed = useRef(false)
+
+  /* Deferred, never mid-scroll.
+     A step is a reallocation of the drawing buffer and the transmission target,
+     and the moment the monitor asks for one is the moment the view got heavy --
+     the first scroll off the hero, where a screen of new geometry arrives at
+     once. Reallocating right then puts a long frame inside the move the visitor
+     is watching, which is the brief stutter on the first scroll. The step is
+     remembered instead and taken once the scroll is still, where a dropped
+     frame costs nothing and nobody is looking for one. */
+  const pending = useRef(0)
+  const stepRef = useRef((_dir: number) => {})
+  useEffect(() => {
+    let raf = 0
+    const loop = () => {
+      if (pending.current !== 0 && scrollVelocity() < STILL_ENOUGH) {
+        const dir = pending.current
+        pending.current = 0
+        stepRef.current(dir)
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [])
   useEffect(() => {
     let t = 0
     const off = onRevealDone(() => {
@@ -84,6 +116,23 @@ export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => numbe
     gl.transmissionResolutionScale = next
   }
 
+  /** One step in either direction: DPR and the transmission pass together. */
+  const step = (dir: number) => {
+    setDpr((d) => Math.round(clamp(d + dir * DPR_STEP, MIN_DPR, QUALITY.dprMax) * 100) / 100)
+    applyTrans(clamp(trans.current + dir * TRANS_STEP, 0.25, QUALITY.transmissionScale))
+  }
+  stepRef.current = step
+
+  /** Take the step now if the view is still; otherwise hold it until it is. */
+  const request = (dir: number) => {
+    if (!armed.current) return
+    if (scrollVelocity() >= STILL_ENOUGH) {
+      pending.current = dir
+      return
+    }
+    step(dir)
+  }
+
   return (
     <PerformanceMonitor
       // A few frames of hysteresis so brief scroll spikes don't trip it.
@@ -93,26 +142,14 @@ export function AdaptiveQuality ({ setDpr }: { setDpr: (fn: (d: number) => numbe
          rather than a single busy half-second. */
       ms={500}
       iterations={12}
-      onDecline={() => {
-        if (!armed.current) return
-        setDpr((d) => Math.round(clamp(d - DPR_STEP, MIN_DPR, QUALITY.dprMax) * 100) / 100)
-        applyTrans(clamp(trans.current - TRANS_STEP, 0.25, QUALITY.transmissionScale))
-      }}
-      onIncline={() => {
-        if (!armed.current) return
-        setDpr((d) => Math.round(clamp(d + DPR_STEP, MIN_DPR, QUALITY.dprMax) * 100) / 100)
-        applyTrans(clamp(trans.current + TRANS_STEP, 0.25, QUALITY.transmissionScale))
-      }}
+      onDecline={() => request(-1)}
+      onIncline={() => request(1)}
       /* Persistent low. drei fires this ONCE and then stops sampling for the
          rest of the session, so whatever it sets is permanent -- which makes
          slamming to the floor the wrong move. Step down instead, and leave the
          floor to the repeated onDecline that would follow a genuinely slow
          machine. */
-      onFallback={() => {
-        if (!armed.current) return
-        setDpr((d) => Math.round(clamp(d - DPR_STEP, MIN_DPR, QUALITY.dprMax) * 100) / 100)
-        applyTrans(clamp(trans.current - TRANS_STEP, 0.25, QUALITY.transmissionScale))
-      }}
+      onFallback={() => request(-1)}
     />
   )
 }
