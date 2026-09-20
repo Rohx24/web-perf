@@ -174,6 +174,12 @@ export const LED = {
      * often they come round in the hero: about 1 cut in 4 instead of 1 in 7.
      */
     bandsWeight: 2,
+    /**
+     * How far the cut's front leans, in wall-u units across the full height:
+     * the bottom of the wall turns over this much before the top. Slight on
+     * purpose; 0 is a straight vertical edge. Live as "wall · programme → slant".
+     */
+    cutSlant: 0.12,
     /** Seconds a programme holds before the next one is chosen. */
     holdSeconds: 6,
     /**
@@ -183,7 +189,7 @@ export const LED = {
      * content into a third, muddier one that was never designed. Long enough
      * only to take the flinch out of an instant swap.
      */
-    cutSeconds: 0.45,
+    cutSeconds: 1,
     /**
      * How long the easter egg holds the wall before it goes back to work.
      *
@@ -263,7 +269,8 @@ export const LED = {
    * screen reads as switched on behind the code rather than sitting black. The
    * middle stays dark on purpose, to keep the logo and the marquee clean.
    */
-  codeBg: 0.72,
+  // Faint: it is the tube being switched on behind the type, not a light show.
+  codeBg: 0.46,
   /**
    * Characters written per second.
    *
@@ -355,12 +362,13 @@ export const LED = {
    * showing. A wall lit evenly corner to corner reads as a flat backdrop; a
    * centre that falls away gives it depth and puts the light where the logo is.
    */
-  // Scaled up from 0.36 to hold the same world width now the wall arc is
-  // narrower (wrapAngle 212 -> 160); it is UV-relative, so it tracks the arc.
-  poolWidth: 0.48,
-  poolHeight: 0.72,
-  poolCentreY: 0.46,
-  poolFloor: 0.42,
+  // In screen space now (see the shader): 0.5 is the middle of the frame, so
+  // these are "how far the light reaches across the picture" rather than across
+  // the cylinder. Wide and shallow on purpose: a subtle pool, no visible edge.
+  poolWidth: 0.8,
+  poolHeight: 0.85,
+  poolCentreY: 0.48,
+  poolFloor: 0.45,
 
   /** How far the crystal's absorption colour is pulled back toward white. */
   tintWash: 0.42,

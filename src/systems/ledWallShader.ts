@@ -104,6 +104,9 @@ uniform float uWorksAspect;
 uniform float uWorksHeight;
 uniform float uWorksCentreY;
 uniform float uWorksDim;
+/** How far the cut's front leans: the bottom of the wall turns over before the
+ *  top by this much, in wall-u units. 0 is a straight vertical front. */
+uniform float uCutSlant;
 /** Baseline tilt (radians) and how far the single word travels across the wall. */
 uniform float uWorksAngle;
 uniform float uWorksTravel;
@@ -453,16 +456,25 @@ vec4 programGlyphs(vec2 uv) {
  */
 vec4 programCode(vec2 uv) {
   // The screen glows faintly behind the code, so the wall reads as switched on
-  // rather than black: a hue gradient across the width, up at the sides and
-  // easing to nothing through the centre, where the logo and the marquee sit.
-  // codeEdge is 0 dead centre and 1 at either side.
-  float codeEdge = abs(uv.x - 0.5) * 2.0;
-  float codeGlow = uCodeBg * smoothstep(0.04, 0.82, codeEdge);
-  // The screen glows faintly behind the code from the wall's palette. The sweep
-  // across the arc is kept small so the hue stays smooth and even — one drifting
-  // colour like the rest of the LED programmes — instead of splitting into two
-  // different hues from one side of the wall to the other (which read as uneven).
-  vec3 codeGlowColour = ramp(uGradientOffset + uv.x * 0.12 + uTime * uGradientDrift);
+  // rather than black: up at the sides and easing to nothing through the centre,
+  // where the logo and the marquee sit.
+  //
+  // In SCREEN space, not wall UV. The wall's u = 0.5 is a point on a 160-degree
+  // cylinder that sits near the left of the frame, so anchoring the glow there
+  // lit one side of the picture and left the other flat, with the slope crossing
+  // the panel seams as a hard line. Centred on the view it is symmetric, and it
+  // eases out where the mark actually is.
+  // codeEdge is 0 dead centre of the frame and 1 at either side.
+  float codeEdge = clamp(abs(vScreenUv.x - 0.5) * 2.0, 0.0, 1.0);
+  // Squared, so it leaves the middle of the frame alone and only gathers in the
+  // last third toward either edge: a glow that arrives gradually has no edge in
+  // it, where a straight ramp plants its steepest slope right where you look.
+  float codeGlow = uCodeBg * pow(smoothstep(0.12, 1.0, codeEdge), 2.0);
+  // One hue for the whole glow, drifting with the rest of the wall. The sweep
+  // across the arc that used to be here put a different colour in each corner
+  // from the one in the middle, which read as two lights fighting rather than
+  // as one screen glowing.
+  vec3 codeGlowColour = ramp(uGradientOffset + uTime * uGradientDrift);
 
   // Content travels upward and new lines arrive at the bottom, the way a
   // terminal scrolls. The subtraction is what sets that direction: a given line
@@ -822,6 +834,9 @@ void main() {
   if (uProgramMix > 0.0) {
     // Reshape the global 0..1 cut into a per-group amount by transition style.
     float m = uProgramMix;
+    // The front leans: a group low on the wall turns over a little before one
+    // high up, so the change travels as a slant rather than as a ruler edge.
+    float frontX = groupUv.x + (groupUv.y - 0.5) * uCutSlant;
     if (uProgramSelectType < 0.5) {
       // Hard cut: the whole wall flips together at the midpoint.
       m = step(0.5, uProgramMix);
@@ -829,11 +844,16 @@ void main() {
       // Wipe across the arc, group by group, with a soft edge of width w. The
       // (1+w) scaling guarantees every group is fully switched by uProgramMix=1.
       float w = 0.25;
-      m = clamp((uProgramMix * (1.0 + w) - groupUv.x) / w, 0.0, 1.0);
+      m = clamp((uProgramMix * (1.0 + w) - frontX) / w, 0.0, 1.0);
+      // ...and the group dips as its own turn comes, the way the sweep does. A
+      // panel that darkens through the change reads as hardware switching over;
+      // without it the wipe is a crossfade with a moving edge, which is the
+      // flat, missing-something version.
+      flipDim = mix(1.0, 0.4, exp(-pow((m - 0.5) * 4.0, 2.0)));
     } else {
       // Exponential sweep across the arc — alche's exponentialOut front. arg is
       // -gx at mix 0 (all off) and 2-gx at mix 1 (all on), so it fully covers.
-      float f = clamp(uProgramMix * 2.0 - groupUv.x, 0.0, 1.0);
+      float f = clamp(uProgramMix * 2.0 - frontX, 0.0, 1.0);
       f = 1.0 - pow(1.0 - f, 3.0);
       m = f;
       // Dim each group hardest as its front passes through the middle of the cut.
@@ -860,10 +880,18 @@ void main() {
   // This is the room rather than the content: a wall lit evenly corner to corner
   // reads as a flat backdrop, while a centre that falls away gives it depth and
   // puts the light where the logo is.
+  //
+  // Measured in SCREEN space. In wall UV the pool was anchored to u = 0.5, which
+  // the narrowed arc (212 to 160 degrees) left sitting at about x = 175 of a
+  // 1440 frame and well below the horizon, so the picture was bright down one
+  // side and dull through the middle, and the slope broke over the panel seams
+  // as a visible edge. Centred on the view it pools where the mark is and falls
+  // away evenly to every corner.
   vec2 fromCentre = vec2(
-    (vUv.x - 0.5) / uPoolWidth,
-    (vUv.y - uPoolCentreY) / uPoolHeight
+    (vScreenUv.x - 0.5) / uPoolWidth,
+    (vScreenUv.y - uPoolCentreY) / uPoolHeight
   );
+  // squared distance, then a gentle exponential: no edge anywhere in it
   level *= mix(uPoolFloor, 1.0, exp(-dot(fromCentre, fromCentre)));
 
   // Through the works gallery the wall becomes each project's own colour. As the

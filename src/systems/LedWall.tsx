@@ -364,6 +364,7 @@ export function LedWall() {
         uProgramMix: { value: 0 },
         // How the current cut is laid across the wall (0 hard, 1 wipe, 2 sweep).
         uProgramSelectType: { value: 0 },
+        uCutSlant: { value: LED.programs.cutSlant },
         uBandPeriod: { value: LED.bandPeriod },
         uBandSpeed: { value: LED.bandSpeed },
         uBandWidth: { value: LED.bandWidth },
@@ -503,6 +504,7 @@ export function LedWall() {
       { group: 'wall · room', label: 'edge floor', min: 0, max: 1, step: 0.01, ...uniform('uPoolFloor') },
       // Ranges over every programme that exists, not just the ones in rotation,
       // so a disabled one can still be inspected.
+      { group: 'wall · programme', label: 'slant', min: -0.3, max: 0.3, step: 0.005, ...uniform('uCutSlant') },
       { group: 'wall · programme', label: 'showing', min: 0, max: Math.max(...Object.values(PROGRAM)), step: 1, ...uniform('uProgramA') },
     ])
   }, [material])
@@ -531,16 +533,18 @@ export function LedWall() {
   })
 
   /**
-   * Begin a cut with one of alche's three transition styles, chosen at random:
-   *   0 hard cut (fast), 1 wipe across the arc, 2 slow exponential sweep.
+   * Begin a cut. Three styles exist -- 0 hard cut, 1 wipe across the arc, 2 slow
+   * exponential sweep -- and every programme change takes the wipe: the tiles
+   * turning over left to right is the one that reads as a wall of screens
+   * changing, where the hard cut is a pop and the long sweep drags.
    * Sets the shader's select-type and the duration this particular cut runs
    * over (alche's fade durations were [0, 0.3, 3]s; ours are matched but never
    * instant, so even the hard cut has a frame or two to move). The caller has
    * already set uProgramB and reset uProgramMix to 0.
    */
-  const beginCut = (type = Math.floor(Math.random() * 3)) => {
+  const beginCut = (type = 1) => {
     material.uniforms.uProgramSelectType.value = type
-    show.current.cutDur = [0.14, 0.5, 2.2][type]
+    show.current.cutDur = [0.14, LED.programs.cutSeconds, 2.2][type]
     show.current.cutting = true
   }
 

@@ -312,6 +312,22 @@
         html { scroll-behavior: auto; }
       }
     </style>
+    <!-- Channel change (public/channel.js): if we arrived from a switch-off, hold
+         the picture dark until it is opened back out of the line. The timeout is
+         the safety net: if the script never runs, the page shows itself. -->
+    <style>
+      html.rd-ch-in { background: #000; }
+      html.rd-ch-in body { visibility: hidden; }
+    </style>
+    <script>
+      try {
+        var n = JSON.parse(sessionStorage.getItem('rd.channel') || 'null')
+        if (n && Date.now() - n.t < 8000 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.documentElement.classList.add('rd-ch-in')
+          setTimeout(function () { document.documentElement.classList.remove('rd-ch-in') }, 2500)
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <aside class="rail mono" aria-label="Projects">
@@ -632,5 +648,6 @@
           .catch(() => {})
       })()
     </script>
+    <script type="module" src="/channel.js"></script>
   </body>
 </html>
